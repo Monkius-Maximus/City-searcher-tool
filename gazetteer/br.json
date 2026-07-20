@@ -1,0 +1,67 @@
+{
+  "country": { "code": "BR", "name": "Brasil", "levels": ["região", "estado", "sub-região", "cidade"] },
+  "source": "IBGE official divisions; sub-regions loaded only for states with completed archetype passes",
+  "places": [
+    { "id": "br.norte", "level": 0, "parentId": null, "name": "Norte" },
+    { "id": "br.nordeste", "level": 0, "parentId": null, "name": "Nordeste" },
+    { "id": "br.centro-oeste", "level": 0, "parentId": null, "name": "Centro-Oeste" },
+    { "id": "br.sudeste", "level": 0, "parentId": null, "name": "Sudeste" },
+    { "id": "br.sul", "level": 0, "parentId": null, "name": "Sul" },
+
+    { "id": "br.sudeste.rj", "level": 1, "parentId": "br.sudeste", "name": "Rio de Janeiro" },
+    { "id": "br.sudeste.sp", "level": 1, "parentId": "br.sudeste", "name": "São Paulo" },
+    { "id": "br.sudeste.mg", "level": 1, "parentId": "br.sudeste", "name": "Minas Gerais" },
+    { "id": "br.sul.rs", "level": 1, "parentId": "br.sul", "name": "Rio Grande do Sul" },
+    { "id": "br.sul.pr", "level": 1, "parentId": "br.sul", "name": "Paraná" },
+    { "id": "br.sul.sc", "level": 1, "parentId": "br.sul", "name": "Santa Catarina" },
+    { "id": "br.nordeste.ba", "level": 1, "parentId": "br.nordeste", "name": "Bahia" },
+    { "id": "br.nordeste.pe", "level": 1, "parentId": "br.nordeste", "name": "Pernambuco" },
+    { "id": "br.nordeste.ce", "level": 1, "parentId": "br.nordeste", "name": "Ceará" },
+    { "id": "br.norte.pa", "level": 1, "parentId": "br.norte", "name": "Pará" },
+
+    { "id": "br.nordeste.pe.metropolitana-do-recife", "level": 2, "parentId": "br.nordeste.pe", "name": "Metropolitana do Recife", "archetypeId": "metropolitana-nordestina-litoral" },
+    { "id": "br.nordeste.pe.zona-da-mata", "level": 2, "parentId": "br.nordeste.pe", "name": "Zona da Mata", "archetypeId": "zona-da-mata-canavieira" },
+    { "id": "br.nordeste.pe.agreste", "level": 2, "parentId": "br.nordeste.pe", "name": "Agreste", "archetypeId": "agreste-feirante" },
+    { "id": "br.nordeste.pe.sertao", "level": 2, "parentId": "br.nordeste.pe", "name": "Sertão", "archetypeId": "sertao-nordestino", "variantIds": ["vale-do-sao-francisco"] },
+
+    { "id": "br.nordeste.ba.metropolitana-de-salvador", "level": 2, "parentId": "br.nordeste.ba", "name": "Metropolitana de Salvador", "archetypeId": "metropolitana-nordestina-litoral" },
+    { "id": "br.nordeste.ba.reconcavo", "level": 2, "parentId": "br.nordeste.ba", "name": "Recôncavo", "archetypeId": "reconcavo-baiano" },
+    { "id": "br.nordeste.ba.litoral-sul", "level": 2, "parentId": "br.nordeste.ba", "name": "Litoral Sul", "archetypeId": "costa-do-cacau" },
+    { "id": "br.nordeste.ba.extremo-sul", "level": 2, "parentId": "br.nordeste.ba", "name": "Extremo Sul", "archetypeId": "costa-do-descobrimento" },
+    { "id": "br.nordeste.ba.chapada-diamantina", "level": 2, "parentId": "br.nordeste.ba", "name": "Chapada Diamantina", "archetypeId": "chapada-serrana" },
+    { "id": "br.nordeste.ba.sertao", "level": 2, "parentId": "br.nordeste.ba", "name": "Sertão", "archetypeId": "sertao-nordestino", "variantIds": ["vale-do-sao-francisco"] },
+    { "id": "br.nordeste.ba.oeste", "level": 2, "parentId": "br.nordeste.ba", "name": "Oeste", "archetypeId": "cerrado-agroindustrial" },
+
+    { "id": "br.nordeste.ce.metropolitana-de-fortaleza", "level": 2, "parentId": "br.nordeste.ce", "name": "Metropolitana de Fortaleza", "archetypeId": "metropolitana-nordestina-litoral" },
+    { "id": "br.nordeste.ce.litoral", "level": 2, "parentId": "br.nordeste.ce", "name": "Litoral", "archetypeId": "litoral-das-dunas" },
+    { "id": "br.nordeste.ce.sertao", "level": 2, "parentId": "br.nordeste.ce", "name": "Sertões", "archetypeId": "sertao-nordestino" },
+    { "id": "br.nordeste.ce.cariri", "level": 2, "parentId": "br.nordeste.ce", "name": "Cariri", "archetypeId": "sertao-nordestino", "variantIds": ["cariri-romeiro"] },
+    { "id": "br.nordeste.ce.serras-umidas", "level": 2, "parentId": "br.nordeste.ce", "name": "Serras Úmidas", "archetypeId": "chapada-serrana", "variantIds": ["serra-umida"] },
+
+    { "id": "br.sudeste.rj.rio-de-janeiro", "level": 3, "parentId": "br.sudeste.rj", "name": "Rio de Janeiro", "isCapitalOf": "br.sudeste.rj", "tier": "hero", "dossier": "dossiers/br.sudeste.rj.rio-de-janeiro.md" },
+    { "id": "br.sudeste.sp.sao-paulo", "level": 3, "parentId": "br.sudeste.sp", "name": "São Paulo", "isCapitalOf": "br.sudeste.sp", "tier": "hero", "dossier": null },
+    { "id": "br.sudeste.sp.santos", "level": 3, "parentId": "br.sudeste.sp", "name": "Santos", "tier": "hero", "dossier": null },
+    { "id": "br.sudeste.sp.mirassol", "level": 3, "parentId": "br.sudeste.sp", "name": "Mirassol", "tier": "generic", "dossier": null },
+    { "id": "br.sudeste.sp.braganca-paulista", "level": 3, "parentId": "br.sudeste.sp", "name": "Bragança Paulista", "tier": "generic", "dossier": null },
+    { "id": "br.sudeste.mg.belo-horizonte", "level": 3, "parentId": "br.sudeste.mg", "name": "Belo Horizonte", "isCapitalOf": "br.sudeste.mg", "tier": "hero", "dossier": null },
+    { "id": "br.sul.rs.porto-alegre", "level": 3, "parentId": "br.sul.rs", "name": "Porto Alegre", "isCapitalOf": "br.sul.rs", "tier": "hero", "dossier": null },
+    { "id": "br.sul.pr.curitiba", "level": 3, "parentId": "br.sul.pr", "name": "Curitiba", "isCapitalOf": "br.sul.pr", "tier": "hero", "dossier": null },
+    { "id": "br.sul.sc.chapeco", "level": 3, "parentId": "br.sul.sc", "name": "Chapecó", "tier": "generic", "dossier": null },
+    { "id": "br.norte.pa.belem", "level": 3, "parentId": "br.norte.pa", "name": "Belém", "isCapitalOf": "br.norte.pa", "tier": "hero", "dossier": null },
+
+    { "id": "br.nordeste.ba.metropolitana-de-salvador.salvador", "level": 3, "parentId": "br.nordeste.ba.metropolitana-de-salvador", "name": "Salvador", "isCapitalOf": "br.nordeste.ba", "tier": "hero", "dossier": "dossiers/br.nordeste.ba.salvador.md" },
+    { "id": "br.nordeste.pe.metropolitana-do-recife.recife", "level": 3, "parentId": "br.nordeste.pe.metropolitana-do-recife", "name": "Recife", "isCapitalOf": "br.nordeste.pe", "tier": "hero", "dossier": null },
+    { "id": "br.nordeste.pe.metropolitana-do-recife.olinda", "level": 3, "parentId": "br.nordeste.pe.metropolitana-do-recife", "name": "Olinda", "tier": "generic+signature", "signature": "hill-top colonial skyline" },
+    { "id": "br.nordeste.pe.agreste.caruaru", "level": 3, "parentId": "br.nordeste.pe.agreste", "name": "Caruaru", "tier": "generic+signature", "signature": "mega-feira + Alto do Moura" },
+    { "id": "br.nordeste.pe.sertao.petrolina", "level": 3, "parentId": "br.nordeste.pe.sertao", "name": "Petrolina", "tier": "generic+signature", "signature": "vale-do-sao-francisco irrigated grids", "twinCity": "br.nordeste.ba.sertao.juazeiro" },
+    { "id": "br.nordeste.ba.sertao.juazeiro", "level": 3, "parentId": "br.nordeste.ba.sertao", "name": "Juazeiro", "tier": "generic+signature", "signature": "vale-do-sao-francisco river bank", "twinCity": "br.nordeste.pe.sertao.petrolina" },
+    { "id": "br.nordeste.ce.metropolitana-de-fortaleza.fortaleza", "level": 3, "parentId": "br.nordeste.ce.metropolitana-de-fortaleza", "name": "Fortaleza", "isCapitalOf": "br.nordeste.ce", "tier": "hero", "dossier": null },
+    { "id": "br.nordeste.ce.litoral.jericoacoara", "level": 3, "parentId": "br.nordeste.ce.litoral", "name": "Jericoacoara", "tier": "generic+signature", "signature": "car-free sand streets + sunset dune" },
+    { "id": "br.nordeste.ce.cariri.juazeiro-do-norte", "level": 3, "parentId": "br.nordeste.ce.cariri", "name": "Juazeiro do Norte", "tier": "generic+signature", "signature": "Horto statue + pilgrim quarter" }
+  ],
+  "notes": [
+    "Cities in states without a completed sub-region pass attach at level 3 directly under the state; they re-parent to a sub-region when that state's pass runs (IDs never change — tier and parent are metadata).",
+    "archetypeId on a sub-region means every generic city inside inherits that archetype by default.",
+    "Lens membership (e.g. Brasileirão) lives in /lenses, never here."
+  ]
+}

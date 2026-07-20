@@ -1,0 +1,247 @@
+{
+  "lens": {
+    "id": "brasileirao-serie-a-2026",
+    "description": "Home cities of the 20 clubs in the 2026 Campeonato Brasileiro Série A. Selector for the Brazil city map project.",
+    "source": "CBF, season starting 2026-01-28",
+    "overlayRules": [
+      "Add the club's home stadium as a landmark location in the city dossier",
+      "Add torcida (fan) culture notes to the relevant district",
+      "Where multiple clubs share a city, model the derby (clássico) as a recurring city event"
+    ]
+  },
+  "entries": [
+    {
+      "club": "Flamengo",
+      "cityId": "br.sudeste.rj.rio-de-janeiro",
+      "stadium": "Maracanã"
+    },
+    {
+      "club": "Fluminense",
+      "cityId": "br.sudeste.rj.rio-de-janeiro",
+      "stadium": "Maracanã"
+    },
+    {
+      "club": "Botafogo",
+      "cityId": "br.sudeste.rj.rio-de-janeiro",
+      "stadium": "Estádio Nilton Santos"
+    },
+    {
+      "club": "Vasco da Gama",
+      "cityId": "br.sudeste.rj.rio-de-janeiro",
+      "stadium": "São Januário"
+    },
+    {
+      "club": "Palmeiras",
+      "cityId": "br.sudeste.sp.sao-paulo",
+      "stadium": "Allianz Parque"
+    },
+    {
+      "club": "Corinthians",
+      "cityId": "br.sudeste.sp.sao-paulo",
+      "stadium": "Neo Química Arena"
+    },
+    {
+      "club": "São Paulo",
+      "cityId": "br.sudeste.sp.sao-paulo",
+      "stadium": "Morumbis"
+    },
+    {
+      "club": "Santos",
+      "cityId": "br.sudeste.sp.santos",
+      "stadium": "Vila Belmiro"
+    },
+    {
+      "club": "Mirassol",
+      "cityId": "br.sudeste.sp.mirassol",
+      "stadium": "Estádio José Maria de Campos Maia (Maião)"
+    },
+    {
+      "club": "Red Bull Bragantino",
+      "cityId": "br.sudeste.sp.braganca-paulista",
+      "stadium": "Estádio Nabi Abi Chedid"
+    },
+    {
+      "club": "Cruzeiro",
+      "cityId": "br.sudeste.mg.belo-horizonte",
+      "stadium": "Mineirão"
+    },
+    {
+      "club": "Atlético-MG",
+      "cityId": "br.sudeste.mg.belo-horizonte",
+      "stadium": "Arena MRV"
+    },
+    {
+      "club": "Grêmio",
+      "cityId": "br.sul.rs.porto-alegre",
+      "stadium": "Arena do Grêmio"
+    },
+    {
+      "club": "Internacional",
+      "cityId": "br.sul.rs.porto-alegre",
+      "stadium": "Beira-Rio"
+    },
+    {
+      "club": "Coritiba",
+      "cityId": "br.sul.pr.curitiba",
+      "stadium": "Couto Pereira"
+    },
+    {
+      "club": "Athletico-PR",
+      "cityId": "br.sul.pr.curitiba",
+      "stadium": "Ligga Arena"
+    },
+    {
+      "club": "Chapecoense",
+      "cityId": "br.sul.sc.chapeco",
+      "stadium": "Arena Condá"
+    },
+    {
+      "club": "Bahia",
+      "cityId": "br.nordeste.ba.salvador",
+      "stadium": "Arena Fonte Nova"
+    },
+    {
+      "club": "Vitória",
+      "cityId": "br.nordeste.ba.salvador",
+      "stadium": "Barradão"
+    },
+    {
+      "club": "Remo",
+      "cityId": "br.norte.pa.belem",
+      "stadium": "Baenão"
+    }
+  ],
+  "derbies": [
+    {
+      "cityId": "br.sudeste.rj.rio-de-janeiro",
+      "name": "Fla-Flu / Clássico Vovô / Clássico dos Milhões",
+      "clubs": [
+        "Flamengo",
+        "Fluminense",
+        "Botafogo",
+        "Vasco da Gama"
+      ]
+    },
+    {
+      "cityId": "br.sudeste.sp.sao-paulo",
+      "name": "Paulista clássicos (Derby Paulista, Majestoso, Choque-Rei)",
+      "clubs": [
+        "Palmeiras",
+        "Corinthians",
+        "São Paulo"
+      ]
+    },
+    {
+      "cityId": "br.sudeste.mg.belo-horizonte",
+      "name": "Clássico Mineiro",
+      "clubs": [
+        "Cruzeiro",
+        "Atlético-MG"
+      ]
+    },
+    {
+      "cityId": "br.sul.rs.porto-alegre",
+      "name": "Grenal",
+      "clubs": [
+        "Grêmio",
+        "Internacional"
+      ]
+    },
+    {
+      "cityId": "br.sul.pr.curitiba",
+      "name": "Atletiba",
+      "clubs": [
+        "Coritiba",
+        "Athletico-PR"
+      ]
+    },
+    {
+      "cityId": "br.nordeste.ba.salvador",
+      "name": "Ba-Vi",
+      "clubs": [
+        "Bahia",
+        "Vitória"
+      ]
+    }
+  ],
+  "researchQueue": [
+    {
+      "cityId": "br.sudeste.rj.rio-de-janeiro",
+      "clubCount": 4,
+      "dossierStatus": "complete",
+      "notes": "rio-de-janeiro-design-brief.md"
+    },
+    {
+      "cityId": "br.sudeste.sp.sao-paulo",
+      "clubCount": 3,
+      "dossierStatus": "pending",
+      "notes": "Highest remaining priority: 3 clubs"
+    },
+    {
+      "cityId": "br.sudeste.mg.belo-horizonte",
+      "clubCount": 2,
+      "dossierStatus": "pending"
+    },
+    {
+      "cityId": "br.sul.rs.porto-alegre",
+      "clubCount": 2,
+      "dossierStatus": "pending"
+    },
+    {
+      "cityId": "br.sul.pr.curitiba",
+      "clubCount": 2,
+      "dossierStatus": "pending"
+    },
+    {
+      "cityId": "br.nordeste.ba.salvador",
+      "clubCount": 2,
+      "dossierStatus": "pending",
+      "notes": "Framework example brief exists; needs full dossier + Ba-Vi overlay"
+    },
+    {
+      "cityId": "br.sudeste.sp.santos",
+      "clubCount": 1,
+      "dossierStatus": "pending",
+      "notes": "Port city, distinct from SP capital"
+    },
+    {
+      "cityId": "br.norte.pa.belem",
+      "clubCount": 1,
+      "dossierStatus": "pending",
+      "notes": "Only Norte region city; Amazon river-city aesthetics"
+    },
+    {
+      "cityId": "br.sul.sc.chapeco",
+      "clubCount": 1,
+      "dossierStatus": "pending",
+      "notes": "Small interior agro-industrial city"
+    },
+    {
+      "cityId": "br.sudeste.sp.braganca-paulista",
+      "clubCount": 1,
+      "dossierStatus": "pending",
+      "notes": "Interior SP"
+    },
+    {
+      "cityId": "br.sudeste.sp.mirassol",
+      "clubCount": 1,
+      "dossierStatus": "pending",
+      "notes": "Smallest city in the lens (~60k pop.)"
+    }
+  ],
+  "coverage": {
+    "totalClubs": 20,
+    "uniqueCities": 11,
+    "deduplicationSavings": "9 dossiers avoided",
+    "regions": {
+      "Sudeste": 12,
+      "Sul": 5,
+      "Nordeste": 2,
+      "Norte": 1,
+      "Centro-Oeste": 0
+    },
+    "gaps": [
+      "Centro-Oeste has no Série A club in 2026 — Brasília, Cuiabá and Goiânia are absent from this lens; a supplementary lens (e.g., state capitals) would be needed for full national coverage"
+    ]
+  }
+}
