@@ -13,6 +13,7 @@ archetypes/{id}.md           Layer 2 — cross-border cultural kits (tags). Inst
 dossiers/{city-id}.md        Layer 2 — handcrafted hero city briefs (filename = gazetteer ID)
 lenses/{project}.json        Layer 3 — time-stamped project selectors + overlays + research queue
 docs/saturation-log.md       cost tracking per pass (the reuse curve)
+docs/lista-de-assets.md      Etapa 1 asset spec (pt-BR): resolutions, formats, sizes, slot schema for the map exporter
 archetypes/_template.md      blank kit for new archetypes
 dossiers/_template.md        blank structure for new hero dossiers
 ```
