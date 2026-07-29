@@ -100,6 +100,74 @@ def slugify_full(text: str) -> str:
     return re.sub(r"-{2,}", "-", text).strip("-")
 
 
+# Cadência e tipo são heurísticas por palavra-chave sobre o texto do dossiê.
+# Não são inferência: são um mapeamento explícito e auditável, e o relatório
+# mostra quais landmarks não casaram com nada (= escritos como prosa, não como
+# mecânica). Esse "não casou" é sinal útil, não falha.
+CADENCE_HINTS = [
+    ("weekly", ("weekly", "tuesday", "weekday", "every week")),
+    ("annual", ("annual", "january", "feb 2", "february", "new year", "carnival",
+                "réveillon", "reveillon", "season")),
+    ("daily", ("daily", "day/night", "daytime", "nighttime", "night ", "morning")),
+]
+
+KIND_HINTS = [
+    ("commerce", ("commerce", "trade", "market", "selling", "buying", "economy",
+                  "supply", "vendors", "stalls", "sourcing")),
+    ("event", ("event", "festival", "procession", "mega-event", "match-day",
+               "derby", "romaria", "lavagem", "parade")),
+    ("skill", ("skill", "lesson", "training", "learning", "rehearsal", "building")),
+    ("quest", ("quest", "collectible", "mini-quest", "oral-history", "restoration")),
+    ("transit", ("transit", "ferry", "tram", "train", "link between", "shortcut",
+                 "departures", "transport")),
+    ("exploration", ("exploration", "hiking", "trail", "panorama", "spotting")),
+    ("social", ("social", "npc", "relationship", "hub", "gathering", "roda",
+                "nightlife", "hangout")),
+]
+
+
+def split_top_level(text: str, sep: str = ";") -> list[str]:
+    """Divide em `sep` apenas fora de parênteses — senão '(Bahia home games; ...)'
+    vira duas ações truncadas."""
+    out, buf, depth = [], [], 0
+    for ch in text:
+        if ch in "([":
+            depth += 1
+        elif ch in ")]":
+            depth = max(0, depth - 1)
+        if ch == sep and depth == 0:
+            out.append("".join(buf))
+            buf = []
+        else:
+            buf.append(ch)
+    out.append("".join(buf))
+    return [p.strip(" .;—-") for p in out if p.strip(" .;—-")]
+
+
+def derive_actions(gameplay: str) -> list[dict]:
+    """Transforma o campo 'Gameplay Function' do dossiê em ações discretas.
+
+    É o teste central do protótipo: o conteúdo já escrito gera jogo, ou é prosa
+    bonita que ainda precisa ser convertida à mão?"""
+    actions = []
+    for i, part in enumerate(split_top_level(gameplay)):
+        low = part.lower()
+        cadence = next((c for c, keys in CADENCE_HINTS if any(k in low for k in keys)), "any")
+        kind = next((k for k, keys in KIND_HINTS if any(x in low for x in keys)), None)
+        # rótulo curto: primeira oração antes de travessão/parêntese
+        label = re.split(r"[—(]", part)[0].strip(" .,-")
+        actions.append(
+            {
+                "id": f"a{i}",
+                "label": label[:58] or part[:58],
+                "text": part,
+                "cadence": cadence,
+                "kind": kind or "unclassified",
+            }
+        )
+    return actions
+
+
 def strip_md(text: str) -> str:
     """Remove ênfase markdown, preservando o texto."""
     text = re.sub(r"\*\*(.+?)\*\*", r"\1", text)
@@ -449,6 +517,7 @@ def build_tree(rep: Report) -> tuple[dict[str, Node], dict, dict, dict]:
                     },
                     "area": lm["area"],
                     "fromLens": lm["isLensOverlay"],
+                    "actions": derive_actions(f.get("Gameplay Function", "")),
                 },
                 color=tint(host, sat=34, light=47, shift=11 * (len(doc["landmarks"]) + 3)),
                 sourceRef=f"{doc['source']}#landmarks",
@@ -617,6 +686,25 @@ def validate(nodes: dict[str, Node], archetypes: dict, lenses: dict, rep: Report
         if n.kind in {"city", "subregion"} and not n.archetypeResolved:
             rep.warn(f"nó `{n.id}` não resolve nenhum arquétipo")
 
+    # prontidão de gameplay: o dossiê virou mecânica ou parou na prosa?
+    venues = [n for n in nodes.values() if n.kind == "venue"]
+    acts = [a for n in venues for a in n.detail.get("actions", [])]
+    if venues:
+        thin = [n.name for n in venues if len(n.detail.get("actions", [])) <= 1]
+        uncl = [a["label"] for a in acts if a["kind"] == "unclassified"]
+        rep.note(
+            f"prontidão de gameplay: {len(acts)} ações derivadas de {len(venues)} locais "
+            f"(média {len(acts) / len(venues):.1f})"
+        )
+        if thin:
+            rep.warn(
+                f"{len(thin)} local(is) renderam 1 ação ou menos — o campo "
+                f"'Gameplay Function' está escrito como prosa corrida, não como mecânicas "
+                f"separadas por ponto-e-vírgula: " + ", ".join(thin)
+            )
+        if uncl:
+            rep.note(f"{len(uncl)} ação(ões) sem tipo reconhecido: " + ", ".join(uncl[:6]))
+
     # separabilidade da lente (invariante 3 do README)
     leaked = [
         n.id for n in nodes.values()
@@ -706,14 +794,15 @@ def main() -> int:
     data_js = "window.WORLD = " + json.dumps(world, ensure_ascii=False) + ";\n"
     (out / "world.data.js").write_text(data_js, encoding="utf-8")
 
-    # visualizador self-contained: um arquivo só, abre com duplo clique
-    tpl = ROOT / "tools" / "viewer" / "index.html"
-    if tpl.exists():
-        html = tpl.read_text(encoding="utf-8").replace(
-            '<script src="../../build/world.data.js"></script>',
-            "<script>" + data_js + "</script>",
-        )
-        (out / "viewer.html").write_text(html, encoding="utf-8")
+    # páginas self-contained: um arquivo só, abre com duplo clique
+    for src, dst in (("viewer", "viewer.html"), ("prototype", "prototype.html")):
+        tpl = ROOT / "tools" / src / "index.html"
+        if tpl.exists():
+            html = tpl.read_text(encoding="utf-8").replace(
+                '<script src="../../build/world.data.js"></script>',
+                "<script>" + data_js + "</script>",
+            )
+            (out / dst).write_text(html, encoding="utf-8")
 
     print(f"✓ build/world.json      {len(nodes)} nós ({stats['slots de asset']} slots)")
     print(f"✓ build/world.data.js   bundle p/ tools/viewer/index.html")

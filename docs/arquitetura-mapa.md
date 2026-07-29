@@ -149,6 +149,8 @@ O ponto que costuma ser feito errado: **a vista de mapa não deve ser uma cena d
 | `build/world.data.js` | o mesmo bundle para `tools/viewer/index.html` durante o desenvolvimento |
 | `build/report.md` | validações: erros, avisos e notas |
 
+`tools/prototype/` — protótipo jogável de turnos sobre os mesmos dados. Ver §9.
+
 `tools/viewer/` — o visualizador. Navega a árvore exatamente com o modelo da §3: clique seleciona (vitrine), duplo-clique entra (ativo), `Esc` sobe um nível. Mostra, por nó: tier, arquétipo resolvido com origem da herança, bairros e locais contidos, overlays de lente, texto integral do dossiê, prompt de imagem, e os slots de asset com status.
 
 Como ainda não existe arte, cada nó renderiza um **placeholder determinístico** derivado do ID — mesma regra da §8.4 da lista de assets. Os filhos de uma cidade compartilham família cromática de propósito, para o placeholder ler como ausência de arte e não competir com ela.
@@ -195,3 +197,56 @@ Os avisos que valem ação:
 - **O dossiê do Rio não segue `dossiers/_template.md`** — é um "Design Brief" de formato antigo, sem o campo `**Position:**`. O parser casa pelo nome do arquivo, mas o Rio deveria ser migrado para o template.
 - **9 cidades sem arquétipo** — todas em estados sem passe de sub-região (SP, MG, RS, PR, SC, PA, RJ). Elas renderizam sem kit visual até o passe do estado rodar.
 - **Recife e Fortaleza são hero sem dossiê e fora da fila de pesquisa** — a lente 2026 não as alcança (clubes rebaixados), o que é o comportamento esperado do sistema de lentes, mas vale confirmar que é intencional.
+
+---
+
+## 9. Protótipo de loop — testando qual jogo isso deveria ser
+
+`build/prototype.html` (fonte em `tools/prototype/`) é um jogo de turnos jogável sobre os dados reais. Ele existe para responder uma pergunta que nenhuma quantidade de documento responde: **o conteúdo já escrito nos dossiês gera jogo?**
+
+### De onde vêm as ações
+
+Não foram inventadas. O exportador lê o campo **`Gameplay Function`** de cada landmark e o quebra em ações discretas, dividindo em `;` **fora de parênteses** (dentro deles o ponto-e-vírgula é pontuação, não separador). Cada ação recebe:
+
+- **cadência** — `weekly` / `annual` / `daily` / `any`, por palavra-chave ("Tuesday", "Feb 2", "day/night")
+- **tipo** — `commerce` / `event` / `skill` / `quest` / `transit` / `exploration` / `social`
+
+Resultado sobre os dois dossiês atuais: **31 ações a partir de 12 locais**, média 2,6 por local.
+
+As heurísticas são mapeamentos explícitos e auditáveis, não inferência — e o `report.md` lista o que **não** casou. Esse "não casou" é o dado mais útil:
+
+> ⚠️ 2 locais renderam 1 ação ou menos — Copacabana Calçadão e Corcovado. O campo deles está escrito como prosa corrida com vírgulas, não como mecânicas separadas por ponto-e-vírgula.
+
+Ou seja: a ferramenta mede **prontidão de gameplay do texto**. Dossiês escritos com mecânicas separadas viram jogo automaticamente; os escritos como parágrafo, não.
+
+### Os três modos
+
+O mesmo mapa, a mesma árvore, três verbos — mudando só **o recurso** e **em que nível da árvore você age**:
+
+| Modo | Recurso | Age no nível | O que constrói |
+|---|---|---|---|
+| **Torcida** (life-sim) | Tempo, 3/semana | 5 · local | vínculo com o bairro + perícia por tipo |
+| **Dia de Jogo** (tycoon) | Verba, 4/semana | 4 · bairro | capacidade e transporte |
+| **Campanha** (estratégia) | Influência, 2/semana | 3 · cidade | influência; locais viram somatório |
+
+O calendário de 16 semanas usa eventos reais dos dossiês e da lente: Lavagem do Bonfim, Festa de Iemanjá (2/2), Carnaval, rodadas do Brasileirão e o clássico Ba-Vi. Numa semana de evento, ações de cadência correspondente rendem em dobro — é assim que "calendário cultural vira sistema" fica testável.
+
+### O que o playtest mostrou
+
+Rodando um bot que navega e age aleatoriamente pelas 16 semanas (números aproximados — é bot, não jogador):
+
+| Modo | Ações únicas ativadas | Locais visitados | Decisões |
+|---|---|---|---|
+| Torcida | 12/31 | 9/12 | 21 |
+| Dia de Jogo | 8/31 | 9/12 | 11 |
+| Campanha | **17/31** | **4/12** | 24 |
+
+**A leitura que importa:** Campanha ativa **mais conteúdo visitando menos lugares**. Porque agindo no nível da cidade, as ações dos bairros e locais se agregam para cima — você colhe o valor do conteúdo sem nunca descer até ele.
+
+Isso quantifica o trade-off da §3 e devolve a pergunta em forma decidível: **se o modo Campanha aproveita o conteúdo dos dossiês sem exigir os níveis 4 e 5, esses dois níveis precisam se justificar por outra coisa que não conteúdo — presença, lugar, sensação de estar lá.** Se o jogo não for sobre isso, dá para cortar dois níveis inteiros da árvore e economizar a maior parte do orçamento de arte.
+
+### Um achado de UX que só apareceu jogando
+
+O primeiro bot não conseguia chegar em Salvador partindo do Brasil, e nem eu: **nada no mapa nacional indicava onde havia conteúdo.** O protótipo agora mostra, em cada nó, quantas ações existem na subárvore dele (`↓ 17 adiante`).
+
+Isso não é detalhe de protótipo — é requisito do jogo real. Num mapa com 5.570 cidades onde só algumas dezenas têm dossiê, **o mapa precisa dizer onde vale a pena descer.** Vale registrar isso como slot de UI antes de encomendar arte.
