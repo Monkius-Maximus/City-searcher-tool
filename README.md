@@ -13,7 +13,10 @@ archetypes/{id}.md           Layer 2 — cross-border cultural kits (tags). Inst
 dossiers/{city-id}.md        Layer 2 — handcrafted hero city briefs (filename = gazetteer ID)
 lenses/{project}.json        Layer 3 — time-stamped project selectors + overlays + research queue
 docs/saturation-log.md       cost tracking per pass (the reuse curve)
-docs/lista-de-assets.md      Etapa 1 asset spec (pt-BR): resolutions, formats, sizes, slot schema for the map exporter
+docs/lista-de-assets.md      Etapa 1 asset spec (pt-BR): resolutions, formats, sizes, slot schema
+docs/arquitetura-mapa.md     how the containment tree drives loading + simulation (pt-BR)
+tools/worldbuild.py          exporter: all layers -> build/world.json + validation report
+tools/viewer/                interactive drill-down viewer (world -> city -> district -> venue)
 archetypes/_template.md      blank kit for new archetypes
 dossiers/_template.md        blank structure for new hero dossiers
 ```
@@ -25,6 +28,19 @@ dossiers/_template.md        blank structure for new hero dossiers
 - **Hero dossiers:** Rio de Janeiro, Salvador (full vertical slice: gazetteer → archetype → dossier → lens overlay)
 - **Lenses:** Brasileirão Série A 2026 (20 clubs → 11 cities; Centro-Oeste coverage gap documented)
 - **Next frontiers:** São Paulo dossier (3 lens clubs), Amazônia archetype family (Belém), Sul family (Porto Alegre)
+
+## Tooling
+
+```bash
+python3 tools/worldbuild.py          # build/world.json + build/viewer.html + build/report.md
+python3 tools/worldbuild.py --check  # validate only; exit 1 on error
+```
+
+No dependencies (Python 3.11+ stdlib). The exporter merges the gazetteer tree with the
+districts and landmarks parsed out of the dossiers into one containment tree
+(region → state → sub-region → city → district → venue), resolves archetype inheritance,
+applies lens overlays separably, and emits the asset-slot manifest. Open `build/viewer.html`
+directly in a browser — no server needed. See `docs/arquitetura-mapa.md`.
 
 ## How to add a new country
 

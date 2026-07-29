@@ -1,0 +1,6 @@
+# saída do exportador — regenerável com `python3 tools/worldbuild.py`
+build/
+
+__pycache__/
+*.pyc
+.DS_Store
