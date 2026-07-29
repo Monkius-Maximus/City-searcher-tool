@@ -1,0 +1,425 @@
+<title>World City Map — navegador de localidades</title>
+<style>
+/* ── tokens ───────────────────────────────────────────────────────────
+   Paleta derivada dos próprios arquétipos do projeto: ocre-vermelho da
+   terra do sertão, ouro-dendê de Salvador, azul de açude, verde-caatinga.
+   Nada de cinza neutro genérico — o chão é terra molhada, com viés quente. */
+:root{
+  --ground:#f4f0e6; --surface:#fffdf7; --sunken:#eae4d6;
+  --line:#d9d1bf; --line-soft:#e6dfd0;
+  --ink:#231d15; --dim:#6d6355; --faint:#948977;
+  --accent:#a86c12;         /* ouro-dendê */
+  --accent-soft:#f0e2c4;
+  --water:#2f6d8e;          /* açude */
+  --miss:#a8422a;           /* ocre-vermelho */
+  --inherit:#4f7346;        /* caatinga pós-chuva */
+  --shadow:0 1px 2px rgba(35,29,21,.07),0 4px 14px rgba(35,29,21,.05);
+  --r:3px;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,"Cascadia Mono","Roboto Mono",Menlo,monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --ground:#15120d; --surface:#1d1913; --sunken:#110e0a;
+    --line:#332c22; --line-soft:#282219;
+    --ink:#ece5d8; --dim:#a1957f; --faint:#796e5c;
+    --accent:#d99a2b; --accent-soft:#3a2c13;
+    --water:#5b9dc0; --miss:#cf6a4c; --inherit:#7fa06d;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 20px rgba(0,0,0,.3);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#15120d; --surface:#1d1913; --sunken:#110e0a;
+  --line:#332c22; --line-soft:#282219;
+  --ink:#ece5d8; --dim:#a1957f; --faint:#796e5c;
+  --accent:#d99a2b; --accent-soft:#3a2c13;
+  --water:#5b9dc0; --miss:#cf6a4c; --inherit:#7fa06d;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 20px rgba(0,0,0,.3);
+}
+:root[data-theme="light"]{
+  --ground:#f4f0e6; --surface:#fffdf7; --sunken:#eae4d6;
+  --line:#d9d1bf; --line-soft:#e6dfd0;
+  --ink:#231d15; --dim:#6d6355; --faint:#948977;
+  --accent:#a86c12; --accent-soft:#f0e2c4;
+  --water:#2f6d8e; --miss:#a8422a; --inherit:#4f7346;
+  --shadow:0 1px 2px rgba(35,29,21,.07),0 4px 14px rgba(35,29,21,.05);
+}
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);
+  font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;
+  font-family:inherit;text-align:left}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+.wrap{max-width:1500px;margin:0 auto;padding:0 20px 60px}
+
+/* ── cabeçalho ────────────────────────────────────────────────────── */
+.top{display:flex;flex-wrap:wrap;align-items:flex-end;gap:20px;
+  padding:26px 0 16px;border-bottom:1px solid var(--line)}
+.title{margin:0;font-size:20px;font-weight:640;letter-spacing:-.01em}
+.title span{color:var(--faint);font-weight:400}
+.lede{margin:4px 0 0;color:var(--dim);font-size:13px;max-width:62ch}
+.figures{display:flex;gap:22px;margin-left:auto;flex-wrap:wrap}
+.fig{display:flex;flex-direction:column;gap:1px}
+.fig b{font-family:var(--mono);font-size:19px;font-weight:600;
+  font-variant-numeric:tabular-nums;line-height:1.1}
+.fig span{font-size:10px;text-transform:uppercase;letter-spacing:.09em;color:var(--faint)}
+.fig.warn b{color:var(--accent)} .fig.bad b{color:var(--miss)} .fig.good b{color:var(--inherit)}
+
+/* ── barra de caminho: a "linha viva" da árvore ───────────────────── */
+.pathbar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  padding:12px 0;border-bottom:1px solid var(--line-soft);position:sticky;top:0;
+  background:var(--ground);z-index:5}
+.path{display:flex;align-items:center;gap:2px;flex-wrap:wrap;flex:1;min-width:0}
+.step{display:flex;align-items:baseline;gap:7px;padding:4px 9px;border-radius:var(--r);
+  transition:background .12s,color .12s;white-space:nowrap}
+.step:hover{background:var(--sunken)}
+.step .lv{font-family:var(--mono);font-size:10px;color:var(--faint);
+  font-variant-numeric:tabular-nums}
+.step .nm{font-size:13px;color:var(--dim)}
+.step[aria-current]{background:var(--accent-soft)}
+.step[aria-current] .nm{color:var(--ink);font-weight:620}
+.step[aria-current] .lv{color:var(--accent)}
+.arrow{color:var(--line);font-size:11px;user-select:none}
+#q{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);
+  padding:6px 10px;color:var(--ink);width:230px;font-size:13px}
+#q::placeholder{color:var(--faint)}
+
+/* ── corpo ────────────────────────────────────────────────────────── */
+.cols{display:grid;grid-template-columns:minmax(0,1fr) 372px;gap:26px;
+  align-items:start;padding-top:20px}
+@media (max-width:960px){.cols{grid-template-columns:1fr}}
+
+.scopehead{margin-bottom:18px}
+.scopehead h2{margin:0;font-size:25px;font-weight:640;letter-spacing:-.015em;
+  text-wrap:balance}
+.scopehead .meta{display:flex;align-items:center;gap:9px;margin-top:5px;
+  font-size:12px;color:var(--dim);flex-wrap:wrap}
+.scopehead code{font-family:var(--mono);font-size:11px;color:var(--faint);
+  word-break:break-all}
+
+.groupbar{display:flex;align-items:center;gap:9px;margin:22px 0 11px}
+.groupbar .lv{font-family:var(--mono);font-size:10px;color:var(--accent);
+  border:1px solid var(--line);border-radius:2px;padding:1px 5px;
+  font-variant-numeric:tabular-nums}
+.groupbar h3{margin:0;font-size:10.5px;text-transform:uppercase;
+  letter-spacing:.1em;color:var(--faint);font-weight:640}
+.groupbar hr{flex:1;border:none;border-top:1px solid var(--line-soft);margin:0}
+
+.grid{display:grid;gap:11px;grid-template-columns:repeat(auto-fill,minmax(228px,1fr))}
+.node{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);
+  overflow:hidden;display:flex;flex-direction:column;
+  transition:border-color .12s,box-shadow .12s,transform .12s}
+.node:hover{border-color:var(--accent);box-shadow:var(--shadow);transform:translateY(-1px)}
+.node[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.swatch{height:60px;position:relative;display:flex;align-items:flex-end;padding:7px 9px}
+.swatch::after{content:"sem arte";position:absolute;top:6px;right:8px;font-size:9px;
+  letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.62);
+  font-family:var(--mono)}
+.swatch .sig{position:relative;font-size:10.5px;line-height:1.3;color:#fff;
+  text-shadow:0 1px 3px rgba(0,0,0,.75);max-width:100%}
+.nbody{padding:9px 11px 11px;display:flex;flex-direction:column;gap:7px;flex:1}
+.nname{font-size:13.5px;font-weight:600;line-height:1.3;text-wrap:balance}
+.chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:auto}
+
+.chip{font-size:10px;padding:1px 6px;border-radius:2px;white-space:nowrap;
+  border:1px solid transparent;font-family:var(--mono);letter-spacing:.01em}
+.chip.k{color:var(--dim);border-color:var(--line)}
+.chip.hero{color:var(--accent);border-color:var(--accent);background:var(--accent-soft)}
+.chip.sig{color:var(--water);border-color:var(--water)}
+.chip.arch{color:var(--inherit);border-color:var(--inherit)}
+.chip.arch.inh{opacity:.75}
+.chip.lens{color:var(--water);border-color:var(--water);background:transparent}
+.chip.miss{color:var(--miss);border-color:var(--miss)}
+.chip.kids{color:var(--faint);border-color:var(--line)}
+
+.blank{border:1px dashed var(--line);border-radius:var(--r);padding:24px;
+  color:var(--dim);font-size:13px;background:var(--surface)}
+.blank b{display:block;color:var(--ink);margin-bottom:3px}
+
+/* ── inspetor ─────────────────────────────────────────────────────── */
+.insp{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);
+  padding:18px;position:sticky;top:64px;max-height:calc(100vh - 90px);overflow-y:auto}
+@media (max-width:960px){.insp{position:static;max-height:none}}
+.insp h2{margin:0 0 3px;font-size:17px;font-weight:640;line-height:1.28;text-wrap:balance}
+.insp .id{font-family:var(--mono);font-size:10.5px;color:var(--faint);
+  word-break:break-all;margin-bottom:14px;display:block}
+.facts{display:grid;grid-template-columns:88px 1fr;gap:5px 12px;font-size:12.5px;
+  margin-bottom:16px}
+.facts dt{color:var(--faint)}
+.facts dd{margin:0;word-break:break-word}
+.facts dd .from{color:var(--faint);font-size:11px}
+.sec{margin-bottom:15px}
+.sec h4{margin:0 0 5px;font-size:9.5px;text-transform:uppercase;letter-spacing:.1em;
+  color:var(--faint);font-weight:640}
+.sec p{margin:0 0 7px;font-size:12.5px;line-height:1.6;color:var(--ink)}
+.quote{border-left:2px solid var(--accent);background:var(--sunken);
+  padding:9px 11px;font-size:11.5px;font-style:italic;line-height:1.55;color:var(--dim)}
+.slotlist{display:flex;flex-direction:column;gap:3px}
+.slot{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:10.5px;
+  padding:5px 8px;background:var(--sunken);border-radius:2px}
+.slot i{width:5px;height:5px;border-radius:50%;flex:0 0 auto}
+.slot i.missing{background:var(--miss)} .slot i.inherited{background:var(--inherit)}
+.slot .dim{margin-left:auto;color:var(--faint);font-variant-numeric:tabular-nums}
+.src{border-top:1px solid var(--line-soft);padding-top:11px;margin-top:14px;
+  font-family:var(--mono);font-size:10.5px;color:var(--faint);word-break:break-all}
+
+/* ── legenda dos quatro estados ───────────────────────────────────── */
+.legend{margin-top:34px;border-top:1px solid var(--line);padding-top:18px}
+.legend h3{margin:0 0 3px;font-size:10.5px;text-transform:uppercase;
+  letter-spacing:.1em;color:var(--faint);font-weight:640}
+.legend .sub{margin:0 0 14px;color:var(--dim);font-size:12.5px;max-width:70ch}
+.states{display:grid;gap:11px;grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
+.state{border:1px solid var(--line);border-radius:var(--r);padding:11px 13px;
+  background:var(--surface)}
+.state b{display:block;font-size:12.5px;margin-bottom:2px}
+.state .cost{font-family:var(--mono);font-size:10px;color:var(--accent);
+  text-transform:uppercase;letter-spacing:.07em}
+.state p{margin:5px 0 0;font-size:11.5px;color:var(--dim);line-height:1.5}
+
+.hits{display:flex;flex-direction:column;gap:3px}
+.hit{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:var(--r);
+  border:1px solid var(--line);background:var(--surface);width:100%}
+.hit:hover{border-color:var(--accent)}
+.hit .where{margin-left:auto;font-size:11px;color:var(--faint);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:48%}
+</style>
+
+<div class="wrap">
+
+<header class="top">
+  <div>
+    <h1 class="title">World City Map <span>· navegador de localidades</span></h1>
+    <p class="lede">A árvore de contenção do projeto, do país ao edifício. Clique para
+      selecionar, clique de novo para entrar. Nenhuma arte existe ainda — cada nó mostra
+      um placeholder determinístico e os slots que ele espera.</p>
+  </div>
+  <div class="figures" id="figures"></div>
+</header>
+
+<nav class="pathbar">
+  <div class="path" id="path"></div>
+  <input id="q" placeholder="Buscar…" autocomplete="off" aria-label="Buscar localidade">
+</nav>
+
+<div class="cols">
+  <main id="stage"></main>
+  <aside class="insp" id="insp"></aside>
+</div>
+
+<section class="legend">
+  <h3>Os quatro estados de uma localidade</h3>
+  <p class="sub">O que torna uma árvore desse tamanho viável não é a estrutura de dados —
+    é que só um caminho fica vivo por vez. Um nó só pode estar <i>simulado</i> se o pai
+    estiver <i>ativo</i>. Todo o resto é registro.</p>
+  <div class="states">
+    <div class="state"><span class="cost">bytes</span><b>Registro</b>
+      <p>Nome, tier, arquétipo, contagem de filhos. Todas as ~5.570 cidades, sempre.</p></div>
+    <div class="state"><span class="cost">kilobytes</span><b>Vitrine</b>
+      <p>+ thumbnail, pins dos filhos, dados de painel. O contêiner que você está olhando.</p></div>
+    <div class="state"><span class="cost">megabytes</span><b>Ativo</b>
+      <p>+ placa em alta resolução, máscaras, áudio. Um por vez — a cidade em que você entrou.</p></div>
+    <div class="state"><span class="cost">orçamento inteiro</span><b>Simulado</b>
+      <p>+ agentes e interações rodando. Um por vez — o local onde o jogador está.</p></div>
+  </div>
+</section>
+
+</div>
+
+<script>
+(function(){
+  const W = window.__WORLD__, N = W.nodes;
+  const KIND = {region:'região',state:'estado',subregion:'sub-região',
+                city:'cidade',district:'bairro',venue:'local'};
+  let scope = null, sel = null;
+
+  const $ = id => document.getElementById(id);
+  const E = (t,c,x)=>{const e=document.createElement(t); if(c)e.className=c;
+                      if(x!=null)e.textContent=x; return e;};
+  const esc = s => String(s==null?'':s).replace(/&/g,'&amp;')
+                     .replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  const kidsOf = id => (id===null? W.roots : N[id].childIds).slice()
+    .sort((a,b)=>(N[a].level-N[b].level)||N[a].name.localeCompare(N[b].name,'pt-BR'));
+  const chain = id => {const o=[]; let c=id; while(c){o.unshift(c); c=N[c].parentId;} return o;};
+  const deep = id => {let c=0; for(const k of (id===null?W.roots:N[id].childIds)) c+=1+deep(k); return c;};
+  const missing = id => {let c=N[id].assets.filter(a=>a.status==='missing').length;
+    for(const k of N[id].childIds) c+=missing(k); return c;};
+
+  // ── números do topo
+  const s = W.stats;
+  const figs=[['nós', s['nós totais'],''],['arquétipos', s['arquétipos'],''],
+    ['slots herdados', s['slots herdados'],'good'],['slots faltando', s['slots faltando'],'warn'],
+    ['erros', W.report.errors.length, W.report.errors.length?'bad':'good']];
+  for(const [label,val,cls] of figs){
+    const f=E('div','fig'+(cls?' '+cls:'')); f.appendChild(E('b',null,val));
+    f.appendChild(E('span',null,label)); $('figures').appendChild(f);
+  }
+
+  // ── caminho vivo
+  function drawPath(){
+    const p=$('path'); p.innerHTML='';
+    const step=(lv,nm,target,here)=>{
+      const b=E('button','step'); if(here) b.setAttribute('aria-current','true');
+      b.appendChild(E('span','lv',lv)); b.appendChild(E('span','nm',nm));
+      b.onclick=()=>{scope=target; sel=null; draw();}; return b;
+    };
+    p.appendChild(step('—','Brasil',null,scope===null));
+    for(const id of chain(scope)){
+      p.appendChild(E('span','arrow','▸'));
+      p.appendChild(step(String(N[id].level), N[id].name, id, id===scope));
+    }
+  }
+
+  // ── grade
+  function swatchStyle(n){
+    const a=n.color;
+    const k=n.archetypeResolved&&W.archetypes[n.archetypeResolved];
+    return `background-image:linear-gradient(118deg,${a},${k?k.color:a})`;
+  }
+  function nodeCard(id){
+    const n=N[id];
+    const b=E('button','node'); b.setAttribute('aria-pressed', sel===id?'true':'false');
+    const sw=E('div','swatch'); sw.setAttribute('style',swatchStyle(n));
+    if(n.signature) sw.appendChild(E('div','sig',n.signature));
+    b.appendChild(sw);
+    const body=E('div','nbody'); body.appendChild(E('div','nname',n.name));
+    const ch=E('div','chips');
+    ch.appendChild(E('span','chip k',KIND[n.kind]));
+    if(n.tier) ch.appendChild(E('span','chip '+(n.tier==='hero'?'hero':n.tier==='generic+signature'?'sig':'k'),n.tier));
+    if(n.archetypeResolved) ch.appendChild(E('span','chip arch'+(n.archetypeInheritedFrom?' inh':''),
+      (n.archetypeInheritedFrom?'↳ ':'')+n.archetypeResolved));
+    for(const l of Object.keys(n.lens)) ch.appendChild(E('span','chip lens',n.lens[l].clubs.length+' clube(s)'));
+    if(n.childIds.length) ch.appendChild(E('span','chip kids',n.childIds.length+' dentro'));
+    const m=missing(id); if(m) ch.appendChild(E('span','chip miss',m+' sem arte'));
+    body.appendChild(ch); b.appendChild(body);
+    b.onclick=()=>{ if(sel===id&&n.childIds.length){scope=id;sel=null;} else sel=id; draw(); };
+    b.ondblclick=()=>{ if(n.childIds.length){scope=id;sel=null;draw();} };
+    return b;
+  }
+
+  function drawStage(){
+    const st=$('stage'); st.innerHTML='';
+    const query=$('q').value.trim().toLowerCase();
+    if(query){
+      const hits=Object.keys(N).filter(i=>N[i].name.toLowerCase().includes(query)||i.toLowerCase().includes(query)).slice(0,50);
+      const bar=E('div','groupbar'); bar.appendChild(E('span','lv','?'));
+      bar.appendChild(E('h3',null,hits.length+' resultado(s)')); bar.appendChild(E('hr'));
+      st.appendChild(bar);
+      if(!hits.length){ st.appendChild(E('div','blank','Nada encontrado.')); return; }
+      const box=E('div','hits');
+      for(const i of hits){ const n=N[i]; const b=E('button','hit');
+        b.appendChild(E('span','chip k',KIND[n.kind])); b.appendChild(E('span',null,n.name));
+        b.appendChild(E('span','where',chain(n.parentId).map(a=>N[a].name).join(' ▸ ')));
+        b.onclick=()=>{$('q').value=''; scope=n.parentId; sel=i; draw();};
+        box.appendChild(b); }
+      st.appendChild(box); return;
+    }
+
+    const head=E('div','scopehead');
+    head.appendChild(E('h2',null, scope===null?'Brasil':N[scope].name));
+    const meta=E('div','meta');
+    const kids=kidsOf(scope);
+    meta.appendChild(E('span',null, scope===null?'país · nível —':KIND[N[scope].kind]+' · nível '+N[scope].level));
+    meta.appendChild(E('span','arrow','·'));
+    meta.appendChild(E('span',null, kids.length+' direto(s), '+deep(scope)+' descendente(s)'));
+    if(scope!==null){ meta.appendChild(E('span','arrow','·')); meta.appendChild(E('code',null,scope)); }
+    head.appendChild(meta); st.appendChild(head);
+
+    if(!kids.length){
+      const d=E('div','blank');
+      d.innerHTML='<b>Folha da árvore</b>'+(N[scope]&&N[scope].kind==='venue'
+        ? 'Um local é o nível mais profundo modelado hoje — é onde a gameplay acontece.'
+        : 'Nada contido aqui ainda. Escreva o dossiê desta localidade e bairros e locais aparecem sozinhos.');
+      st.appendChild(d); return;
+    }
+    const by={}; for(const k of kids)(by[N[k].kind]||=[]).push(k);
+    for(const kind of ['region','state','subregion','city','district','venue']){
+      if(!by[kind]) continue;
+      const bar=E('div','groupbar');
+      bar.appendChild(E('span','lv',String(N[by[kind][0]].level)));
+      bar.appendChild(E('h3',null,KIND[kind]+' · '+by[kind].length));
+      bar.appendChild(E('hr')); st.appendChild(bar);
+      const g=E('div','grid'); by[kind].forEach(k=>g.appendChild(nodeCard(k)));
+      st.appendChild(g);
+    }
+  }
+
+  function sec(title,html){const d=E('div','sec');d.appendChild(E('h4',null,title));
+    const c=E('div');c.innerHTML=html;d.appendChild(c);return d;}
+
+  function drawInsp(){
+    const p=$('insp'); p.innerHTML='';
+    if(!sel){ p.appendChild(E('div','blank','Selecione um nó para ver tudo que o projeto já sabe sobre ele.')); return; }
+    const n=N[sel];
+    p.appendChild(E('h2',null,n.name));
+    p.appendChild(E('code','id',n.id));
+
+    const dl=E('dl','facts');
+    const row=(k,v,from)=>{ if(!v) return;
+      dl.appendChild(E('dt',null,k)); const d=E('dd',null,v);
+      if(from){const f=E('span','from',' ↳ '+from); d.appendChild(f);}
+      dl.appendChild(d); };
+    row('Nível', n.level+' · '+KIND[n.kind]);
+    row('Tier', n.tier); row('Assinatura', n.signature);
+    row('Capital de', n.isCapitalOf); row('Gêmea', n.twinCity);
+    row('Arquétipo', n.archetypeResolved||'— nenhum', n.archetypeInheritedFrom||'');
+    row('Variantes',(n.variantIds||[]).join(', '));
+    row('Contém', n.childIds.length? n.childIds.length+' nó(s)':'—');
+    p.appendChild(dl);
+
+    const d=n.detail||{};
+    if(d.type) p.appendChild(sec('Tipo','<p>'+esc(d.type)+'</p>'));
+    if(d.significance) p.appendChild(sec('Significado cultural','<p>'+esc(d.significance)+'</p>'));
+    if(d.gameplay) p.appendChild(sec('Função de gameplay','<p>'+esc(d.gameplay)+'</p>'));
+    if(d.visual) p.appendChild(sec('Identidade visual','<p>'+esc(d.visual)+'</p>'));
+    if(d.zones) p.appendChild(sec('Zonas de gameplay','<p>'+esc(d.zones)+'</p>'));
+    if(d.description) p.appendChild(sec('Descrição','<p>'+esc(d.description)+'</p>'));
+    if(d.imagePrompt) p.appendChild(sec('Briefing de arte','<div class="quote">'+esc(d.imagePrompt)+'</div>'));
+    for(const [k,v] of Object.entries(d.extra||{})) p.appendChild(sec(k,'<p>'+esc(v)+'</p>'));
+    if(d.context) p.appendChild(sec('Contexto','<p>'+esc(d.context).slice(0,760)+'</p>'));
+    if(d.artNotes) p.appendChild(sec('Notas de arte','<p>'+esc(d.artNotes).slice(0,760)+'</p>'));
+
+    const a=n.archetypeResolved&&W.archetypes[n.archetypeResolved];
+    if(a){ let h='';
+      if(a.identity) h+='<p>'+esc(a.identity)+'</p>';
+      if(a.palette) h+='<p><b>Paleta:</b> '+esc(a.palette)+'</p>';
+      if(a.signature) h+='<p><b>Silhueta:</b> '+esc(a.signature)+'</p>';
+      if(a.imagePrompts&&a.imagePrompts[0]) h+='<div class="quote">'+esc(a.imagePrompts[0])+'</div>';
+      p.appendChild(sec('Kit herdado · '+a.id,h)); }
+
+    for(const [lid,ov] of Object.entries(n.lens||{})){
+      let h='<p>'+ov.clubs.map(c=>'<b>'+esc(c.club)+'</b> — '+esc(c.stadium)).join('<br>')+'</p>';
+      for(const db of ov.derbies) h+='<p><b>Clássico:</b> '+esc(db.name)+'</p>';
+      p.appendChild(sec('Overlay de lente · '+lid,h)); }
+
+    if(n.assets&&n.assets.length){
+      const b=E('div','sec'); b.appendChild(E('h4',null,'Slots de asset · '+n.assets.length));
+      const list=E('div','slotlist');
+      for(const sl of n.assets){ const r=E('div','slot');
+        r.appendChild(E('i','')).className='';
+        const dot=E('i',sl.status); r.replaceChild(dot,r.firstChild);
+        r.appendChild(E('span',null,sl.slotId));
+        const sp=sl.spec||{};
+        r.appendChild(E('span','dim', sp.width? sp.width+'×'+sp.height : sp.seconds? sp.seconds+'s' : sl.status));
+        r.title=sl.path+(sl.resolvedFrom?'\n↳ herdado de '+sl.resolvedFrom:'');
+        list.appendChild(r); }
+      b.appendChild(list); p.appendChild(b); }
+
+    if(n.sourceRef) p.appendChild(E('div','src','fonte: '+n.sourceRef));
+  }
+
+  function draw(){ drawPath(); drawStage(); drawInsp(); }
+  $('q').addEventListener('input',()=>{sel=null; drawStage();});
+  document.addEventListener('keydown',e=>{
+    if(e.key==='Escape'){
+      if($('q').value){$('q').value=''; draw();}
+      else if(sel){sel=null; draw();}
+      else if(scope!==null){scope=N[scope].parentId; draw();}
+    }
+  });
+  draw();
+})();
+</script>
