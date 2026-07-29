@@ -409,12 +409,39 @@ Assim o mapa **abre na engine, navega, clica, entra na cidade e volta** antes de
 2. Nenhuma província clicável abaixo de 24×24 px (vira pin, com aviso no relatório)
 3. Todo `archetypeId` referenciado no gazetteer tem arquivo em `archetypes/`
 4. Todo `dossier` não-nulo aponta para arquivo existente
-5. Todo `cityId` da lente existe no gazetteer *(hoje passa: 11/11)*
+5. Todo `cityId` da lente existe no gazetteer — **hoje falha: 10/11.** Ver §8.6
 6. Toda cidade `hero` tem dossiê **ou** está listada como pendente no `researchQueue` da lente
 7. Toda cidade `generic+signature` tem campo `signature` preenchido
 8. Máscaras: sem ICC, sem antialiasing, dimensão potência de dois
 9. **Separabilidade da lente:** remover `lenses/` e reconstruir precisa gerar um build válido (invariante 3 do README)
 10. Todo asset `final` bate com o `spec` do slot (dimensão, formato, espaço de cor)
+
+### 8.6 Bloqueador conhecido: o ID de Salvador está inconsistente
+
+Rodei as validações da §8.5 contra os dados atuais. **Nove passam. A validação 5 falha**, e a falha atinge diretamente a §5 (caminhos de asset derivam de IDs do gazetteer), então precisa ser resolvida antes de o exportador emitir qualquer caminho.
+
+Salvador aparece com **dois IDs diferentes** no repositório:
+
+| Onde | Valor |
+|---|---|
+| `gazetteer/br.json` | `br.nordeste.ba.metropolitana-de-salvador.salvador` |
+| `lenses/brasileirao-serie-a-2026.json` — `entries`, `derbies`, `researchQueue` | `br.nordeste.ba.salvador` ← **órfão** |
+| Nome do arquivo do dossiê | `dossiers/br.nordeste.ba.salvador.md` |
+| Cabeçalho *dentro* do dossiê | `br.nordeste.ba.metropolitana-de-salvador.salvador` |
+
+Três consequências:
+
+1. As entradas de Bahia e Vitória na lente **não resolvem** para nenhum nó do gazetteer.
+2. O nome do arquivo do dossiê viola a convenção declarada no README (*"dossiers/{city-id}.md — filename = gazetteer ID"*). O campo `dossier` no gazetteer aponta para ele e funciona, mas só porque o caminho está escrito à mão.
+3. O padrão se repete em toda cidade de estado com passe de sub-região concluído: Recife, Fortaleza, Olinda, Caruaru, Petrolina, Juazeiro, Jericoacoara e Juazeiro do Norte têm a sub-região embutida no ID; as de estados sem passe (São Paulo, Santos, BH, Porto Alegre, Curitiba, Chapecó, Belém, Mirassol, Bragança) não têm. **Quando o passe de SP rodar, os IDs dessas cidades mudam também** — e todo caminho de asset já produzido quebra junto.
+
+**Causa raiz:** a própria nota do gazetteer diz que ao re-parentear uma cidade para uma sub-região *"IDs never change — tier and parent are metadata"*, e o invariante 5 do README repete (*"promotion never changes an ID"*). O passe da Bahia mudou o ID mesmo assim. O que deveria ter mudado é só o `parentId`.
+
+**Correção recomendada** (é decisão sua — não alterei os dados canônicos):
+
+> Adotar **`br.<região>.<uf>.<cidade>`** como forma canônica e permanente do ID, com a sub-região vivendo **apenas** em `parentId`. Ou seja: `br.nordeste.ba.salvador`, `parentId: "br.nordeste.ba.metropolitana-de-salvador"`.
+
+Isso alinha os três lugares de uma vez (lente já usa essa forma, nome do dossiê já usa essa forma), restaura o invariante, e **torna o caminho do asset imune ao passe de sub-região** — que é exatamente a propriedade que a §5 precisa. O custo é editar 9 IDs no gazetteer e o cabeçalho do dossiê de Salvador; nenhum asset foi produzido ainda, então a janela para fazer isso de graça é agora.
 
 ---
 
@@ -487,6 +514,7 @@ Ordem de ataque recomendada: **(1)** exportador + placeholders → **(2)** másc
 
 Estas não bloqueiam o exportador nem a arte de arquétipo; bloqueiam decisões pontuais mais adiante.
 
+0. **Forma canônica do ID de cidade** (§8.6). **Bloqueia o exportador** — os caminhos de asset da §5 derivam do ID. Recomendação: `br.<região>.<uf>.<cidade>`, sub-região só em `parentId`.
 1. **Trilha A ou B** (§3). Recomendação: A. Muda §6.3 e §6.9.
 2. **Engine.** Muda só a coluna de container (KTX2 vs. formato nativo) e o codec de vídeo da P2.
 3. **Lista de "prédios"** da grade do painel de localidade (§6.6). Espec. técnica já fechada em 64×64; falta a lista.
