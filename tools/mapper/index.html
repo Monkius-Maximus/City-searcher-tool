@@ -138,7 +138,50 @@ svg{width:100%;height:100%;display:block;touch-action:none}
 .acti{border:1px solid var(--line);border-radius:2px;padding:6px 8px;font-size:11px;
   display:flex;gap:7px;align-items:baseline}
 .acti .g{font-family:var(--mono);font-size:9px;flex:0 0 auto}
-.empty{padding:14px 13px;color:var(--faint);font-size:11.5px}
+.empty{padding:14px 13px;color:var(--faint);font-size:11.5px;line-height:1.6}
+
+/* ── formulários de CRUD ────────────────────────────────── */
+.creator{padding:11px 13px;border-bottom:1px solid var(--line);background:var(--panel2)}
+.creator textarea{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:2px;
+  padding:6px 8px;color:var(--ink);font:inherit;font-size:11.5px;resize:vertical;outline:none;
+  min-height:44px;line-height:1.5}
+.creator textarea:focus{border-color:var(--accent)}
+.creator textarea::placeholder{color:var(--faint);font-size:11px}
+.crow{display:flex;align-items:center;gap:8px;margin-top:6px}
+.hintxt{font-family:var(--mono);font-size:9px;color:var(--faint)}
+button.primary{border:1px solid var(--accent);color:var(--accent);border-radius:2px;
+  padding:4px 12px;font-size:11.5px;background:rgba(61,220,132,.08)}
+button.primary:hover{background:rgba(61,220,132,.18)}
+button.ghostbtn{border:1px solid var(--line);color:var(--dim2);border-radius:2px;
+  padding:4px 10px;font-size:11px;margin-top:6px}
+button.ghostbtn:hover{border-color:var(--accent);color:var(--ink)}
+button.danger{border:1px solid var(--red);color:var(--red);border-radius:2px;
+  padding:4px 10px;font-size:11px}
+button.danger:hover{background:rgba(255,107,94,.12)}
+button.x{color:var(--faint);padding:0 5px;font-size:13px;line-height:1}
+button.x:hover{color:var(--red)}
+
+.dh{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.dh h4{margin:0}
+.idline{display:block;font-family:var(--mono);font-size:9.5px;color:var(--faint);
+  word-break:break-all;margin:2px 0 9px}
+.fld{margin-bottom:8px}
+.fld label{display:block;font-family:var(--mono);font-size:8.5px;letter-spacing:.1em;
+  color:var(--faint);text-transform:uppercase;margin-bottom:3px}
+.fld input,.fld select{width:100%;background:var(--bg);border:1px solid var(--line);
+  border-radius:2px;padding:5px 7px;color:var(--ink);font:inherit;font-size:11.5px;outline:none}
+.fld input:focus,.fld select:focus{border-color:var(--accent)}
+.inh{font-family:var(--mono);font-size:9.5px;color:var(--accent);opacity:.8;margin:2px 0 9px}
+.slab2{font-family:var(--mono);font-size:8.5px;letter-spacing:.1em;color:var(--faint);
+  text-transform:uppercase;margin:11px 0 5px}
+.acti select{background:var(--bg);border:1px solid var(--line);border-radius:2px;
+  color:var(--ink);font:inherit;font-size:10px;padding:2px 3px;max-width:78px}
+.acti input{flex:1;min-width:0;background:var(--bg);border:1px solid var(--line);
+  border-radius:2px;color:var(--ink);font:inherit;font-size:11px;padding:3px 5px;outline:none}
+.acti input:focus{border-color:var(--accent)}
+.dfoot{display:flex;gap:6px;align-items:center;margin-top:12px;
+  border-top:1px solid var(--line);padding-top:10px}
+.st.warn b{color:var(--accent)}
 </style>
 </head>
 <body>
@@ -154,7 +197,10 @@ svg{width:100%;height:100%;display:block;touch-action:none}
   <div class="tools">
     <button id="lens" aria-pressed="true">◉ Lente de interações</button>
     <button id="edit" aria-pressed="false">✎ Editar zonas</button>
-    <button id="export">⤓ Exportar layout</button>
+    <button id="export">⤓ Exportar</button>
+    <button id="import">⤒ Importar</button>
+    <button id="reset" title="descartar edições locais">↺</button>
+    <input type="file" id="file" accept="application/json" hidden>
   </div>
 </div>
 
@@ -162,409 +208,12 @@ svg{width:100%;height:100%;display:block;touch-action:none}
   <div id="map">
     <svg id="svg" preserveAspectRatio="xMidYMid meet"></svg>
     <div class="legend" id="legend"></div>
-    <div class="hint">clique numa zona para entrar · esc volta<br>arraste para mover · roda dá zoom</div>
+    <div class="hint">clique seleciona · clique de novo entra · esc volta<br>arraste move · roda dá zoom</div>
   </div>
   <aside id="side"></aside>
 </div>
 
 <script src="../../build/world.data.js"></script>
-<script>
-(function(){
-const W=window.WORLD;
-if(!W){document.body.innerHTML='<p style="padding:20px">Rode <code>python3 tools/worldbuild.py</code>.</p>';return;}
-const N=W.nodes, L=W.layout, SVG=document.getElementById('svg');
-const NS='http://www.w3.org/2000/svg';
-
-const KIND={region:'região',state:'estado',subregion:'sub-região',city:'cidade',
-            district:'bairro',venue:'local'};
-/* categorias de interação — semânticas, separadas da cor de marca.
-   Vêm do campo Gameplay Function do dossiê, derivadas no exportador. */
-const CAT={
-  commerce:{c:'--gold',g:'▤',n:'Comércio'}, event:{c:'--pink',g:'★',n:'Evento'},
-  skill:{c:'--accent',g:'◆',n:'Perícia'},  quest:{c:'--violet',g:'❖',n:'Missão'},
-  transit:{c:'--blue',g:'⇄',n:'Transporte'}, exploration:{c:'--teal',g:'▲',n:'Exploração'},
-  social:{c:'--orange',g:'●',n:'Social'},  unclassified:{c:'--faint',g:'○',n:'Sem tipo'}
-};
-const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
-
-let scope=null, sel=null, lens=true, editing=false, tab='map', query='';
-let edits=Object.fromEntries(Object.entries(L).filter(([,r])=>r.edited).map(([k,r])=>[k,r]));
-let view={x:0,y:0,w:W.world.w,h:W.world.h}, target={...view};
-
-const el=(t,a)=>{const e=document.createElementNS(NS,t);
-  for(const k in (a||{})) e.setAttribute(k,a[k]); return e;};
-const kidsOf=id=>(id===null?W.roots:N[id].childIds);
-const chain=id=>{const o=[];let c=id;while(c){o.unshift(c);c=N[c].parentId;}return o;};
-const rectOf=id=>edits[id]||L[id];
-const catOf=n=>{const a=(n.detail&&n.detail.actions)||[];
-  return a.length?(CAT[a[0].kind]||CAT.unclassified):CAT.unclassified;};
-const actsOf=id=>(N[id].detail&&N[id].detail.actions)||[];
-const subActs=id=>{let t=actsOf(id).length;
-  for(const c of N[id].childIds) t+=subActs(c); return t;};
-
-/* ── enquadramento: o zoom é contínuo, sem menu entre níveis ── */
-function frame(id){
-  const r = id===null ? {x:0,y:0,w:W.world.w,h:W.world.h} : rectOf(id);
-  if(!r) return;
-  const m=Math.max(r.w,r.h)*0.06;
-  target={x:r.x-m,y:r.y-m,w:r.w+2*m,h:r.h+2*m};
-}
-function applyView(){
-  SVG.setAttribute('viewBox',`${view.x} ${view.y} ${view.w} ${view.h}`);
-}
-function tick(){
-  const k=0.2, d=['x','y','w','h'].reduce((s,p)=>s+Math.abs(target[p]-view[p]),0);
-  if(d>0.4){
-    for(const p of ['x','y','w','h']) view[p]+=(target[p]-view[p])*k;
-    applyView(); renderMap();            // tamanhos de texto/pin dependem do zoom
-    requestAnimationFrame(tick);
-  } else { view={...target}; applyView(); renderMap(); }
-}
-
-/* ── desenho do mapa ─────────────────────────────────────── */
-function draw(){ renderMap(); drawSide(); }
-
-function renderMap(){
-  SVG.innerHTML='';
-  const scale=view.w/(SVG.clientWidth||SVG.getBoundingClientRect().width||1200);
-  const anc=new Set(chain(scope)), kids=kidsOf(scope);
-
-  // ancestrais: só contorno, para você saber onde está
-  for(const id of anc){ if(id===scope) continue;
-    const r=rectOf(id); if(!r) continue;
-    const z=el('rect',{x:r.x,y:r.y,width:r.w,height:r.h,rx:2,
-      class:'zone ghost',stroke:N[id].color}); SVG.appendChild(z);
-  }
-  if(scope!==null){ const r=rectOf(scope);
-    if(r) SVG.appendChild(el('rect',{x:r.x,y:r.y,width:r.w,height:r.h,rx:2,
-      class:'zone scope',stroke:css('--accent'),'stroke-opacity':.5}));
-  }
-
-  for(const id of kids){
-    const n=N[id], r=rectOf(id); if(!r) continue;
-    const isVenue=n.kind==='venue';
-
-    if(!isVenue){
-      const z=el('rect',{x:r.x,y:r.y,width:r.w,height:r.h,rx:2,
-        class:'zone child'+(sel===id?' sel':'')+(edits[id]?' edited':''),
-        stroke:sel===id?css('--accent'):n.color});
-      z.dataset.id=id; SVG.appendChild(z);
-
-      // rótulo de canto, como no protótipo do Madrid
-      const labPx=9*scale;                       // 9 px na tela, sempre
-      const lab=el('text',{x:r.x+labPx*0.45,y:r.y+labPx*1.15,class:'zlabel',
-        fill:n.color,'fill-opacity':.95,'font-size':labPx});
-      lab.textContent=(n.signature?'◆ ':'')+n.name.toUpperCase().slice(0,26);
-      SVG.appendChild(lab);
-
-      // nome grande no centro quando a zona é grande o bastante na tela
-      const pxW=r.w/scale;
-      if(pxW>96){
-        // cabe na largura da zona E nunca passa de 26 px na tela
-        const fit=(r.w*0.92)/Math.max(6,n.name.length)*1.85;
-        const fs=Math.min(fit, r.h*0.2, 26*scale);
-        const nm=el('text',{x:r.x+r.w/2,y:r.y+r.h/2,class:'zname',
-          fill:css('--ink'),'text-anchor':'middle','dominant-baseline':'central',
-          'font-size':fs});
-        nm.textContent=n.name; SVG.appendChild(nm);
-        const na=subActs(id), inner=n.childIds.length;
-        if((inner||na) && pxW>140){
-          const mp=Math.min(fs*0.42, 9*scale);
-          const mt=el('text',{x:r.x+r.w/2,y:r.y+r.h/2+fs*0.95,
-            class:'zmeta','text-anchor':'middle','font-size':mp});
-          mt.textContent=[inner?inner+' dentro':'',na?na+' interações':''].filter(Boolean).join('  ·  ');
-          SVG.appendChild(mt);
-        }
-      }
-      if(editing){
-        const hs=Math.max(3,6*scale);
-        const h=el('rect',{x:r.x+r.w-hs,y:r.y+r.h-hs,width:hs,height:hs,class:'handle'});
-        h.dataset.id=id; h.dataset.resize='1'; SVG.appendChild(h);
-      }
-    } else if(lens){
-      drawPin(id,r,scale);
-    }
-
-    // pistas do nível seguinte: pins dos netos aparecem dentro da zona
-    if(lens && !isVenue){
-      for(const g of n.childIds){
-        if(N[g].kind!=='venue') continue;
-        const gr=rectOf(g); if(gr) drawPin(g,gr,scale,true);
-      }
-    }
-  }
-}
-
-function drawPin(id,r,scale,small){
-  const n=N[id], cat=catOf(n), col=css(cat.c);
-  const cap=(small?24:46)*scale;                 // teto em px na tela
-  const s=Math.min(Math.min(r.w,r.h)*(small?0.5:0.68), cap);
-  const cx=r.x+r.w/2, cy=r.y+r.h/2;
-  const g=el('g',{class:'pin'}); g.dataset.id=id;
-  g.appendChild(el('rect',{x:cx-s/2,y:cy-s/2,width:s,height:s,rx:s*0.2,
-    fill:'rgba(0,0,0,.55)',stroke:col,'stroke-opacity':sel===id?1:.85}));
-  const t=el('text',{x:cx,y:cy,fill:col,'font-size':s*0.55}); t.textContent=cat.g;
-  g.appendChild(t);
-  const na=actsOf(id).length;
-  if(na>1){ // mais de uma interação no mesmo local
-    const b=el('circle',{cx:cx+s/2,cy:cy-s/2,r:s*0.17,fill:col});
-    g.appendChild(b);
-    const bt=el('text',{x:cx+s/2,y:cy-s/2,fill:'#08120e','font-size':s*0.22,
-      'text-anchor':'middle','dominant-baseline':'central'});
-    bt.textContent=String(na); g.appendChild(bt);
-  }
-  SVG.appendChild(g);
-  if(!small && s/scale>20){
-    const lb=el('text',{x:cx,y:cy+s/2+7*scale,class:'pinlabel',fill:col,
-      'font-size':8*scale});
-    lb.textContent=n.name.slice(0,22).toUpperCase(); SVG.appendChild(lb);
-  }
-}
-
-/* ── painel lateral: lista + detalhe ────────────────────── */
-function drawSide(){
-  const s=document.getElementById('side'); s.innerHTML='';
-  const h=document.createElement('div'); h.className='sh';
-  const t=document.createElement('h3');
-  t.textContent = scope===null ? W.country.name : N[scope].name;
-  h.appendChild(t);
-  const p=document.createElement('p');
-  p.textContent = scope===null
-    ? W.country.levels.join(' › ')
-    : KIND[N[scope].kind]+' · nível '+N[scope].level+' · '+scope;
-  h.appendChild(p); s.appendChild(h);
-
-  // campo de busca: sempre disponível, mas é o foco da aba LOCALIDADES
-  const sb=document.createElement('div'); sb.className='searchbox';
-  const inp=document.createElement('input');
-  inp.placeholder='Buscar em todas as localidades…'; inp.value=query;
-  inp.oninput=e=>{query=e.target.value; drawSide();
-    const f=document.querySelector('.searchbox input'); if(f){f.focus();
-      f.setSelectionRange(f.value.length,f.value.length);}};
-  sb.appendChild(inp); s.appendChild(sb);
-
-  if(tab==='list'||query){
-    const q=query.trim().toLowerCase();
-    const hits=Object.keys(N).filter(i=>!q||N[i].name.toLowerCase().includes(q)
-        ||i.toLowerCase().includes(q))
-      .sort((a,b)=>(N[a].level-N[b].level)||N[a].name.localeCompare(N[b].name,'pt-BR'))
-      .slice(0,120);
-    const lab=document.createElement('div'); lab.className='slab';
-    lab.textContent=(q?'resultados':'todas as localidades')+' · '+hits.length;
-    s.appendChild(lab);
-    for(const id of hits) s.appendChild(itemFor(id,true));
-    if(sel) s.appendChild(detailFor(sel));
-    return;
-  }
-
-  const kids=kidsOf(scope);
-  const lab=document.createElement('div'); lab.className='slab';
-  lab.textContent='contido aqui · '+kids.length; s.appendChild(lab);
-
-  if(!kids.length){
-    const e=document.createElement('div'); e.className='empty';
-    e.textContent=N[scope]&&N[scope].kind==='venue'
-      ? 'Local é a folha da árvore. As interações dele aparecem abaixo.'
-      : 'Vazio. Classifique sub-regiões ou cidades aqui para o mapa preencher.';
-    s.appendChild(e);
-  }
-  for(const id of kids.slice().sort((a,b)=>(N[a].level-N[b].level)||
-        N[a].name.localeCompare(N[b].name,'pt-BR'))) s.appendChild(itemFor(id));
-
-  if(sel) s.appendChild(detailFor(sel));
-}
-
-function itemFor(id,withPath){
-    const n=N[id], b=document.createElement('button');
-    b.className='item'; if(sel===id) b.setAttribute('aria-current','true');
-    const ic=document.createElement('div'); ic.className='ic';
-    const isV=n.kind==='venue', cat=catOf(n);
-    ic.style.borderColor = isV?css(cat.c):n.color;
-    ic.style.color = isV?css(cat.c):n.color;
-    ic.textContent = isV?cat.g:(n.tier==='hero'?'◈':'▢');
-    b.appendChild(ic);
-    const tx=document.createElement('div'); tx.className='tx';
-    const nm=document.createElement('b'); nm.textContent=n.name; tx.appendChild(nm);
-    const sub=document.createElement('span');
-    sub.textContent=[KIND[n.kind],n.tier,n.archetypeResolved&&('↳'+n.archetypeResolved)]
-      .filter(Boolean).join(' · ').slice(0,44);
-    tx.appendChild(sub); b.appendChild(tx);
-    const nn=document.createElement('span'); nn.className='n';
-    const na=subActs(id);
-    nn.textContent=n.childIds.length?('▸'+n.childIds.length):(na?na+'×':'');
-    b.appendChild(nn);
-    if(withPath){
-      const pth=document.createElement('span'); pth.className='n';
-      pth.textContent=chain(n.parentId).map(a=>N[a].name).join(' ▸ ').slice(-28);
-      b.appendChild(pth);
-    }
-    b.onclick=()=>{
-      if(withPath){ sel=id; enter(n.parentId); return; }
-      if(sel===id&&n.childIds.length) enter(id); else {sel=id; draw();}
-    };
-    b.ondblclick=()=>enter(id);
-    return b;
-}
-
-function detailFor(selId){
-    const n=N[selId], d=document.createElement('div'); d.className='detail';
-    const mk=(ttl,txt)=>{if(!txt)return;const q=document.createElement('h4');
-      q.textContent=ttl;d.appendChild(q);const r=document.createElement('p');
-      r.textContent=txt;d.appendChild(r);};
-    const q=document.createElement('h4'); q.textContent='selecionado'; d.appendChild(q);
-    const nm=document.createElement('p'); nm.style.color=css('--ink');
-    nm.style.fontWeight='600'; nm.textContent=n.name; d.appendChild(nm);
-    for(const [k,v] of [['tier',n.tier],['assinatura',n.signature],
-        ['arquétipo',n.archetypeResolved&&(n.archetypeResolved+
-          (n.archetypeInheritedFrom?' (herdado)':''))]]){
-      if(v){const t=document.createElement('span');t.className='tag';
-        t.textContent=k+': '+v;d.appendChild(t);}
-    }
-    mk('descrição',(n.detail&&(n.detail.description||n.detail.significance))||'');
-    mk('zonas de gameplay',(n.detail&&n.detail.zones)||'');
-    const A=actsOf(selId);
-    if(A.length){
-      const q2=document.createElement('h4');
-      q2.textContent='interações neste local · '+A.length; d.appendChild(q2);
-      const box=document.createElement('div'); box.className='acts';
-      for(const a of A){
-        const r=document.createElement('div'); r.className='acti';
-        const g=document.createElement('span'); g.className='g';
-        const c=CAT[a.kind]||CAT.unclassified;
-        g.textContent=c.g; g.style.color=css(c.c); r.appendChild(g);
-        const tt=document.createElement('span'); tt.textContent=a.label; r.appendChild(tt);
-        box.appendChild(r);
-      }
-      d.appendChild(box);
-    }
-    return d;
-}
-
-function frameSel(id){ /* seleção não muda o zoom; entrar muda */ }
-function enter(id){ scope=id; sel=null; frame(id); tick(); draw(); }
-
-/* ── trilha, tabs, stats, legenda ───────────────────────── */
-function drawChrome(){
-  const c=document.getElementById('crumbs'); c.innerHTML='';
-  const mk=(lv,nm,t,here)=>{const b=document.createElement('button');
-    if(here)b.setAttribute('aria-current','true');
-    const s=document.createElement('span'); s.className='lv'; s.textContent=lv;
-    b.appendChild(s); b.appendChild(document.createTextNode(nm));
-    b.onclick=()=>enter(t); return b;};
-  c.appendChild(mk('—','MUNDO',null,scope===null));
-  for(const id of chain(scope)){
-    const i=document.createElement('i'); i.textContent='▸'; c.appendChild(i);
-    c.appendChild(mk(String(N[id].level),N[id].name,id,id===scope));
-  }
-
-  const tb=document.getElementById('tabs'); tb.innerHTML='';
-  for(const [k,lbl] of [['map','◱ Mapa'],['list','☰ Localidades']]){
-    const b=document.createElement('button'); b.textContent=lbl;
-    b.setAttribute('aria-pressed',String(k===tab));
-    b.onclick=()=>{tab=k; if(k==='map') query=''; drawChrome(); drawSide();};
-    tb.appendChild(b);
-  }
-
-  const hs=document.getElementById('hudstats'); hs.innerHTML='';
-  const add=(v,l)=>{const d=document.createElement('div'); d.className='st';
-    const b=document.createElement('b'); b.textContent=v; d.appendChild(b);
-    const s=document.createElement('span'); s.textContent=l; d.appendChild(s);
-    hs.appendChild(d);};
-  const tot=Object.keys(N).length;
-  const cidades=Object.values(N).filter(n=>n.kind==='city').length;
-  const bairros=Object.values(N).filter(n=>n.kind==='district').length;
-  const inter=Object.values(N).reduce((a,n)=>a+actsOf(n.id).length,0);
-  add(tot,'zonas'); add(cidades,'cidades'); add(bairros,'bairros');
-  add(inter,'interações'); add(Object.keys(edits).length,'editadas');
-
-  const lg=document.getElementById('legend'); lg.innerHTML='';
-  const h=document.createElement('h4'); h.textContent='Categorias de interação';
-  lg.appendChild(h);
-  for(const k of Object.keys(CAT)){
-    if(k==='unclassified') continue;
-    const d=document.createElement('div');
-    const i=document.createElement('i'); i.style.background=css(CAT[k].c);
-    d.appendChild(i); d.appendChild(document.createTextNode(CAT[k].g+'  '+CAT[k].n));
-    lg.appendChild(d);
-  }
-}
-
-/* ── interação: clique, zoom, arrasto, edição ───────────── */
-const pt=(ev)=>{const r=SVG.getBoundingClientRect();
-  return {x:view.x+(ev.clientX-r.left)/r.width*view.w,
-          y:view.y+(ev.clientY-r.top)/r.height*view.h};};
-
-let drag=null;
-SVG.addEventListener('pointerdown',ev=>{
-  const t=ev.target.closest('[data-id]');
-  if(editing && t){
-    const id=t.dataset.id, r={...rectOf(id)};
-    drag={id,r,start:pt(ev),resize:t.dataset.resize==='1'};
-    SVG.setPointerCapture(ev.pointerId); return;
-  }
-  drag={pan:true,start:pt(ev),v:{...view}};
-  SVG.setPointerCapture(ev.pointerId);
-});
-SVG.addEventListener('pointermove',ev=>{
-  if(!drag) return;
-  const p=pt(ev), dx=p.x-drag.start.x, dy=p.y-drag.start.y;
-  if(drag.pan){
-    target={x:drag.v.x-dx,y:drag.v.y-dy,w:view.w,h:view.h};
-    view={...target}; SVG.setAttribute('viewBox',`${view.x} ${view.y} ${view.w} ${view.h}`);
-    return;
-  }
-  const r=drag.r;
-  edits[drag.id]= drag.resize
-    ? {x:r.x,y:r.y,w:Math.max(8,r.w+dx),h:Math.max(8,r.h+dy),edited:true}
-    : {x:r.x+dx,y:r.y+dy,w:r.w,h:r.h,edited:true};
-  draw();
-});
-SVG.addEventListener('pointerup',ev=>{
-  if(drag&&!drag.pan) drawChrome();     // atualiza o contador de zonas editadas
-  if(drag&&!drag.pan&&!drag.resize){
-    const moved=Math.abs(pt(ev).x-drag.start.x)+Math.abs(pt(ev).y-drag.start.y);
-    if(moved<2){ const id=drag.id;
-      if(sel===id&&N[id].childIds.length) enter(id); else {sel=id; draw();} }
-  } else if(drag&&drag.pan){
-    const moved=Math.abs(pt(ev).x-drag.start.x)+Math.abs(pt(ev).y-drag.start.y);
-    if(moved<2){ const t=ev.target.closest('[data-id]');
-      if(t){const id=t.dataset.id;
-        if(sel===id&&N[id].childIds.length) enter(id); else {sel=id; draw();}}
-    }
-  }
-  drag=null;
-});
-SVG.addEventListener('wheel',ev=>{
-  ev.preventDefault();
-  const p=pt(ev), k=ev.deltaY>0?1.13:1/1.13;
-  const nw=Math.min(W.world.w*2.5,Math.max(20,view.w*k));
-  const s=nw/view.w;
-  target={x:p.x-(p.x-view.x)*s,y:p.y-(p.y-view.y)*s,w:nw,h:view.h*s};
-  view={...target}; SVG.setAttribute('viewBox',`${view.x} ${view.y} ${view.w} ${view.h}`);
-},{passive:false});
-
-document.addEventListener('keydown',ev=>{
-  if(ev.key==='Escape'){ if(sel){sel=null;draw();}
-    else if(scope!==null) enter(N[scope].parentId); }
-});
-
-document.getElementById('lens').onclick=e=>{
-  lens=!lens; e.currentTarget.setAttribute('aria-pressed',String(lens)); draw();};
-document.getElementById('edit').onclick=e=>{
-  editing=!editing; e.currentTarget.setAttribute('aria-pressed',String(editing));
-  document.getElementById('map').classList.toggle('editing',editing); draw();};
-document.getElementById('export').onclick=()=>{
-  const out={note:'Zonas movidas à mão. worldbuild.py preserva estas e gera o resto.',
-             world:W.world, rects:edits};
-  const blob=new Blob([JSON.stringify(out,null,1)],{type:'application/json'});
-  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-  a.download='layout.br.json'; a.click();
-};
-window.addEventListener('resize',draw);
-
-frame(null); tick(); drawChrome(); draw();
-const _e=enter; enter=(id)=>{_e(id);drawChrome();};
-})();
-</script>
+<script src="app.js"></script>
 </body>
 </html>

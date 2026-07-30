@@ -16,10 +16,10 @@ docs/saturation-log.md       cost tracking per pass (the reuse curve)
 docs/lista-de-assets.md      Etapa 1 asset spec (pt-BR): resolutions, formats, sizes, slot schema
 docs/arquitetura-mapa.md     how the containment tree drives loading + simulation (pt-BR)
 tools/worldbuild.py          exporter: all layers -> build/world.json + validation report
-tools/mapper/                interactive spatial map: nested zones, continuous zoom, drag to redraw
+tools/mapper/                world editor: spatial map + full CRUD on localities (see docs/arquitetura-mapa.md)
 tools/viewer/                data inspector (same tree, list form)
 tools/prototype/             turn-based loop prototype for testing candidate verbs
-map/layout.<country>.json    optional: hand-placed zones; generated for whatever is absent
+map/edits.json               optional: nodes/edits/zones made in the editor; merged at build time
 archetypes/_template.md      blank kit for new archetypes
 dossiers/_template.md        blank structure for new hero dossiers
 ```

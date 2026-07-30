@@ -366,6 +366,67 @@ def parse_lenses(rep: Report) -> dict[str, dict]:
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+def apply_edits(nodes: dict[str, "Node"], rep: Report) -> None:
+    """Aplica map/edits.json — as alterações feitas no editor de mapa.
+
+    Não destrói nada do que foi pesquisado: markdown e gazetteer continuam sendo
+    a fonte da pesquisa; este arquivo carrega o que foi construído no mapa
+    (bairros, locais, renomeações, remoções). Os dois compõem."""
+    f = ROOT / "map" / "edits.json"
+    if not f.exists():
+        return
+    ed = json.loads(f.read_text(encoding="utf-8"))
+
+    for nid in ed.get("removed", []):
+        if nid not in nodes:
+            rep.warn(f"edits: remoção de `{nid}`, que não existe — ignorada")
+            continue
+        stack = [nid]
+        while stack:
+            cur = nodes.pop(stack.pop(), None)
+            if cur:
+                stack.extend(cur.childIds)
+        for n in nodes.values():
+            if nid in n.childIds:
+                n.childIds.remove(nid)
+
+    for entry in ed.get("added", []):
+        nid = entry["id"]
+        if nid in nodes:
+            rep.warn(f"edits: `{nid}` já existe — adição ignorada")
+            continue
+        parent = entry.get("parentId")
+        if parent and parent not in nodes:
+            rep.error(f"edits: `{nid}` aponta para pai inexistente `{parent}`")
+            continue
+        lvl = entry.get("level", (nodes[parent].level + 1) if parent else 0)
+        nodes[nid] = Node(
+            id=nid, name=entry["name"], level=lvl,
+            kind=entry.get("kind", LEVEL_NAMES[min(lvl, 5)]),
+            parentId=parent,
+            tier=entry.get("tier"), signature=entry.get("signature"),
+            archetypeId=entry.get("archetypeId"),
+            detail=entry.get("detail", {}),
+            color=tint(nid), sourceRef="map/edits.json",
+        )
+        if parent:
+            nodes[parent].childIds.append(nid)
+
+    for nid, patch in (ed.get("patched") or {}).items():
+        n = nodes.get(nid)
+        if not n:
+            rep.warn(f"edits: patch de `{nid}`, que não existe — ignorado")
+            continue
+        for k, v in patch.items():
+            if k in {"name", "tier", "signature", "archetypeId"}:
+                setattr(n, k, v)
+
+    counts = (len(ed.get("added", [])), len(ed.get("patched") or {}), len(ed.get("removed", [])))
+    if any(counts):
+        rep.note(f"edits.json aplicado: +{counts[0]} adicionado(s), "
+                 f"~{counts[1]} alterado(s), -{counts[2]} removido(s)")
+
+
 def build_tree(rep: Report) -> tuple[dict[str, Node], dict, dict, dict]:
     gaz = json.loads((ROOT / "gazetteer" / "br.json").read_text(encoding="utf-8"))
     archetypes = parse_archetypes(rep)
@@ -568,6 +629,8 @@ def build_tree(rep: Report) -> tuple[dict[str, Node], dict, dict, dict]:
                 f"lente `{lid}`: `{old}` resolvido por alias para `{new}` — "
                 f"IDs divergentes entre lente e gazetteer (ver docs/lista-de-assets.md §8.6)"
             )
+
+    apply_edits(nodes, rep)
 
     # segunda passada: bairros e locais só existem agora, e também herdam (§4)
     for n in nodes.values():
@@ -850,11 +913,13 @@ def main() -> int:
     validate(nodes, archetypes, lenses, rep)
 
     # geometria do mapa: edições salvas à mão vencem o layout gerado
-    layout_file = ROOT / "map" / "layout.br.json"
     saved = {}
-    if layout_file.exists():
-        saved = json.loads(layout_file.read_text(encoding="utf-8")).get("rects", {})
-        rep.note(f"layout: {len(saved)} zona(s) com posição editada à mão em {layout_file.name}")
+    for fname in ("layout.br.json", "edits.json"):
+        f = ROOT / "map" / fname
+        if f.exists():
+            saved.update(json.loads(f.read_text(encoding="utf-8")).get("rects", {}) or {})
+    if saved:
+        rep.note(f"layout: {len(saved)} zona(s) com posição definida à mão")
     roots = sorted(n.id for n in nodes.values() if n.parentId is None)
     layout = build_layout(nodes, roots, saved)
 
@@ -915,6 +980,13 @@ def main() -> int:
                 '<script src="../../build/world.data.js"></script>',
                 "<script>" + data_js + "</script>",
             )
+            # app externo (só o mapper tem) entra inline no arquivo self-contained
+            appjs = tpl.parent / "app.js"
+            if appjs.exists():
+                html = html.replace(
+                    '<script src="app.js"></script>',
+                    "<script>" + appjs.read_text(encoding="utf-8") + "</script>",
+                )
             (out / dst).write_text(html, encoding="utf-8")
 
     print(f"✓ build/world.json      {len(nodes)} nós ({stats['slots de asset']} slots)")

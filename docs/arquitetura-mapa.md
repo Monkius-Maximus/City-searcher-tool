@@ -300,3 +300,57 @@ O requisito está atendido em dois eixos, com dado real:
 - **um local com várias interações** — Largo dos Guimarães tem 4 (ateliês, economia de galeria, o bondinho como transporte, escadarias como atalho); o pin carrega um badge com o número
 
 Nada disso é fixo em um-por-bairro. A quantidade sai do dossiê.
+
+---
+
+## 11. CRUD: o mapa virou editor de mundo
+
+A versão anterior só desenhava o que já existia nos arquivos. Agora o mapa **cria, edita e remove localidades**, no modelo do [Azgaar Fantasy Map Generator](https://azgaar.github.io/Fantasy-Map-Generator/): tudo roda no navegador, o estado vive em `localStorage`, e você exporta um arquivo para levar de volta ao repositório.
+
+### As três camadas de estado
+
+```
+WORLD (build/world.json)   base gerada por worldbuild.py — pesquisa + dossiês
+ed    (localStorage)       suas edições pendentes: added / patched / removed / rects
+N     (derivado)           a árvore final que a tela desenha
+```
+
+`Exportar` baixa `edits.json`; salvando em `map/edits.json`, o próximo build mescla tudo. **A pesquisa em markdown nunca é sobrescrita** — as duas fontes compõem, e cada nó carrega no campo `sourceRef` de onde veio.
+
+O contador `edições` no HUD mostra quantas alterações estão pendentes de exportação. `↺` descarta as locais sem tocar no que já está no repositório.
+
+### Construir o mapa interno de uma cidade
+
+É a resposta direta a "entrar em Recife e ver a cidade criada para o jogo":
+
+1. Navegue `Nordeste › Pernambuco › Metropolitana do Recife › Recife`
+2. A barra lateral avisa que a cidade ainda não tem mapa interno
+3. No campo `+ adicionar bairro`, digite um nome por linha e confirme — os bairros **aparecem no mapa na hora**, com geometria calculada e cor própria
+4. Entre num bairro e adicione locais do mesmo jeito
+5. Selecione um local e use `+ interação` para dar a ele quantas interações quiser
+
+O nível de cada nó vem do pai automaticamente (`região → estado → sub-região → cidade → bairro → local`), então não há como criar um bairro dentro de um estado. O invariante de pai único é estrutural, não uma regra a lembrar.
+
+**Herança continua automática.** Um bairro criado agora em Recife já resolve `metropolitana-nordestina-litoral` sem nenhum dado escrito nele — sobe a árvore até achar quem declara, igual aos que vieram de dossiê.
+
+### O que é editável
+
+| Nível | Campos |
+|---|---|
+| todos | nome, posição e tamanho da zona, exclusão (com descendentes, sob confirmação) |
+| até cidade | arquétipo (lista dos que existem na biblioteca) |
+| cidade, bairro | assinatura |
+| cidade | tier (`hero`, `generic+signature`, `generic`) — muda o peso e portanto o tamanho da zona |
+| local | interações: rótulo e categoria, quantas quiser |
+
+### Geometria calculada nos dois lados
+
+O layout é recomputado no navegador a cada alteração, com um porte fiel do `grid_cells`/`place` do `worldbuild.py`. Adicionar um bairro reflui a cidade inteira na hora, sem rebuild.
+
+Os dois precisam continuar iguais: **mudou a regra de layout em Python, mude em `tools/mapper/app.js` também.** É a única duplicação deliberada do projeto, e existe porque o editor precisa ser instantâneo e o build precisa ser reprodutível sem navegador.
+
+### Limites conhecidos
+
+- **Não há reparentar.** Mover um nó de pai exige excluir e recriar. Um seletor de pai resolveria; ainda não existe.
+- **Adições feitas no editor e já absorvidas pelo build são ignoradas** (dedupe por ID), então não duplicam se você esquecer de limpar o `localStorage` depois de exportar. Mas o contador de edições continua marcando — use `↺` depois de commitar.
+- **Interações criadas no editor não voltam para o markdown.** Elas vivem em `edits.json`. Se o local vier de um dossiê, o campo `Gameplay Function` continua sendo a fonte; o editor sobrepõe.
