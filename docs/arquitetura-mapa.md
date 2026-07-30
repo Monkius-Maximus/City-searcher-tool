@@ -250,3 +250,53 @@ Isso quantifica o trade-off da §3 e devolve a pergunta em forma decidível: **s
 O primeiro bot não conseguia chegar em Salvador partindo do Brasil, e nem eu: **nada no mapa nacional indicava onde havia conteúdo.** O protótipo agora mostra, em cada nó, quantas ações existem na subárvore dele (`↓ 17 adiante`).
 
 Isso não é detalhe de protótipo — é requisito do jogo real. Num mapa com 5.570 cidades onde só algumas dezenas têm dossiê, **o mapa precisa dizer onde vale a pena descer.** Vale registrar isso como slot de UI antes de encomendar arte.
+
+---
+
+## 10. O mapa interativo (`tools/mapper/`)
+
+`build/mapper.html` é a interface gráfica espacial. Diferente do `viewer` — que lista a árvore — aqui **cada localidade é uma área desenhada no mapa**, e o aninhamento da árvore é literalmente aninhamento espacial: o retângulo de Salvador fica dentro do da Metropolitana, que fica dentro da Bahia, que fica dentro do Nordeste.
+
+### Zoom contínuo, sem menu
+
+Entrar numa localidade **não troca de tela**. O `viewBox` do SVG anima até o retângulo daquele nó, o mapa redesenha a cada quadro, e você continua no mesmo espaço — é o comportamento do EU4, não o menu de seleção do Sims 4. `Esc` sobe um nível. A trilha no topo mostra onde você está, com o número do nível.
+
+Ancestrais ficam desenhados como contorno fantasma, então você nunca perde a noção de onde está dentro do quê.
+
+### A geometria é gerada e editável
+
+O `worldbuild.py` calcula uma **grade de células quase quadradas** para os filhos dentro do retângulo do pai, recursivamente.
+
+Tentei treemap primeiro (empacotamento por peso) e foi descartado: produz tiras finas de proporção 4:1 ou pior, com rótulos ilegíveis. A grade sempre dá zonas de proporção entre 1,1 e 1,6 — saudável, previsível, e é o que jogos de mapa por zonas usam.
+
+O peso ainda importa na **ordem** e no tamanho relativo por tier (`hero` pesa 6, `generic+signature` 2,5, `generic` 1), aplicando a regra do playbook: resolução segue valor de gameplay, não área geográfica real.
+
+**Editar é o fluxo previsto**, não uma exceção:
+
+1. Ligue `✎ Editar zonas`
+2. Arraste as zonas, redimensione pelo canto
+3. `⤓ Exportar layout` baixa um `layout.br.json`
+4. Salve em `map/layout.br.json`
+
+No próximo build, **as zonas que você moveu são preservadas e todo o resto é gerado ao redor delas** — inclusive os filhos, que se re-organizam dentro do novo retângulo do pai. Testado: mover o Nordeste reposiciona Bahia, Pernambuco e Ceará dentro dele automaticamente. É isso que faz o desenho ser incremental em vez de tudo-ou-nada.
+
+Zonas editadas aparecem com borda tracejada e entram no contador do HUD.
+
+### Núcleo e lente, separados na interface
+
+O botão `◉ Lente de interações` liga e desliga todos os pins. Desligado, você tem o **pesquisador de localidades puro** — regiões, estados, sub-regiões, cidades e bairros classificados, sem nada de jogo. Ligado, aparecem as interações derivadas dos dossiês.
+
+Isso não é enfeite: é a garantia de reuso. O núcleo (árvore + classificação + geometria) serve qualquer projeto e qualquer país. Futebol é uma lente. Um projeto de turismo, de logística ou de outro jogo seria outra lente sobre a mesma árvore.
+
+### Busca global
+
+A aba `☰ Localidades` e o campo de busca varrem **todas as localidades** por nome ou ID, em qualquer nível, mostrando o caminho de cada resultado. Buscar `juazeiro` devolve Juazeiro (BA) e Juazeiro do Norte (CE) com suas trilhas completas — clicar navega até lá no mapa.
+
+### Múltiplas interações por bairro
+
+O requisito está atendido em dois eixos, com dado real:
+
+- **um bairro com vários locais** — `Lapa & Santa Teresa` (Rio) contém Escadaria Selarón *e* Largo dos Guimarães
+- **um local com várias interações** — Largo dos Guimarães tem 4 (ateliês, economia de galeria, o bondinho como transporte, escadarias como atalho); o pin carrega um badge com o número
+
+Nada disso é fixo em um-por-bairro. A quantidade sai do dossiê.

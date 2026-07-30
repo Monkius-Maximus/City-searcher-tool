@@ -578,6 +578,107 @@ def build_tree(rep: Report) -> tuple[dict[str, Node], dict, dict, dict]:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# geometria: a árvore vira zonas no mapa
+#
+# O mapa não é um gráfico — é um espaço navegável. Cada nó ocupa um retângulo
+# DENTRO do retângulo do pai, recursivamente, então o aninhamento da árvore é
+# literalmente aninhamento espacial. O zoom é contínuo (viewBox do SVG), sem
+# menu de seleção entre níveis.
+#
+# O layout é gerado quando não existe e PRESERVADO quando existe: map/layout.
+# <país>.json é dado editável. Desenhar por cima e salvar é o fluxo previsto.
+# ─────────────────────────────────────────────────────────────────────────────
+
+WORLD_W, WORLD_H = 1600.0, 900.0
+
+# folga interna por nível, para o aninhamento ser visível
+PAD = {0: 10.0, 1: 8.0, 2: 7.0, 3: 6.0, 4: 5.0, 5: 0.0}
+
+# peso relativo: resolução segue valor de gameplay, não área real
+# (playbook, Parte 3 — "distorça a escala, nunca a identidade")
+TIER_WEIGHT = {"hero": 6.0, "generic+signature": 2.5, "generic": 1.0}
+
+
+def node_weight(nid: str, nodes: dict[str, "Node"]) -> float:
+    n = nodes[nid]
+    own = TIER_WEIGHT.get(n.tier or "", 1.0) if n.kind == "city" else 1.0
+    if n.kind == "venue":
+        own = 1.0
+    return own + sum(node_weight(c, nodes) for c in n.childIds)
+
+
+def grid_cells(n: int, x: float, y: float, w: float, h: float,
+               gap: float) -> list[tuple[float, float, float, float]]:
+    """Divide o retângulo em n células o mais quadradas possível.
+
+    Grade, não treemap: um treemap empacota por peso e produz tiras finas com
+    rótulos ilegíveis — testamos e ficou inutilizável. A grade sempre dá zonas
+    de proporção saudável, é o que jogos de mapa por zonas usam, e é previsível
+    de editar à mão depois."""
+    if n <= 0 or w <= 0 or h <= 0:
+        return []
+    # escolhe colunas/linhas minimizando o desvio de proporção 1:1 das células
+    best, best_cost = (1, n), float("inf")
+    for cols in range(1, n + 1):
+        rows = -(-n // cols)
+        cw, ch = (w - gap * (cols - 1)) / cols, (h - gap * (rows - 1)) / rows
+        if cw <= 0 or ch <= 0:
+            continue
+        cost = max(cw / ch, ch / cw) + 0.12 * (cols * rows - n)  # pune buraco
+        if cost < best_cost:
+            best, best_cost = (cols, rows), cost
+    cols, rows = best
+    cw = (w - gap * (cols - 1)) / cols
+    ch = (h - gap * (rows - 1)) / rows
+    out = []
+    for i in range(n):
+        r, c = divmod(i, cols)
+        out.append((x + c * (cw + gap), y + r * (ch + gap), cw, ch))
+    return out
+
+
+def build_layout(nodes: dict[str, "Node"], roots: list[str],
+                 saved: dict | None = None) -> dict[str, dict]:
+    """Retângulos absolutos no espaço do mundo, um por nó. Retângulos salvos
+    à mão vencem os gerados — é isso que torna o mapa desenhável."""
+    saved = saved or {}
+    rects: dict[str, dict] = {}
+
+    def place(ids: list[str], box: tuple[float, float, float, float], depth: int) -> None:
+        x, y, w, h = box
+        pad = PAD.get(depth, 4.0)
+        gap = max(1.5, pad * 0.55)
+        ix, iy = x + pad, y + pad + (7.0 if depth > 0 else 4.0)   # espaço p/ o rótulo
+        iw = max(0.0, w - 2 * pad)
+        ih = max(0.0, h - 2 * pad - (7.0 if depth > 0 else 4.0))
+        # maiores subárvores primeiro, para a leitura ficar estável
+        ordered = sorted(ids, key=lambda i: (-node_weight(i, nodes), nodes[i].name))
+        cells = grid_cells(len(ordered), ix, iy, iw, ih, gap)
+        for nid, cell in zip(ordered, cells):
+            if nid in saved:
+                s_ = saved[nid]
+                cell = (s_["x"], s_["y"], s_["w"], s_["h"])
+                edited = True
+            else:
+                edited = False
+            # local é pin, não zona: célula quadrada centrada, para o ícone
+            # não ficar minúsculo quando o bairro tem um só local
+            if nodes[nid].kind == "venue" and not edited:
+                side = min(cell[2], cell[3])
+                cell = (cell[0] + (cell[2] - side) / 2,
+                        cell[1] + (cell[3] - side) / 2, side, side)
+            rects[nid] = {"x": round(cell[0], 2), "y": round(cell[1], 2),
+                          "w": round(cell[2], 2), "h": round(cell[3], 2),
+                          "edited": edited}
+            kids = nodes[nid].childIds
+            if kids:
+                place(kids, cell, depth + 1)
+
+    place(roots, (0.0, 0.0, WORLD_W, WORLD_H), 0)
+    return rects
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # slots de asset (§8 da lista de assets)
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -748,6 +849,15 @@ def main() -> int:
     manifest = attach_assets(nodes)
     validate(nodes, archetypes, lenses, rep)
 
+    # geometria do mapa: edições salvas à mão vencem o layout gerado
+    layout_file = ROOT / "map" / "layout.br.json"
+    saved = {}
+    if layout_file.exists():
+        saved = json.loads(layout_file.read_text(encoding="utf-8")).get("rects", {})
+        rep.note(f"layout: {len(saved)} zona(s) com posição editada à mão em {layout_file.name}")
+    roots = sorted(n.id for n in nodes.values() if n.parentId is None)
+    layout = build_layout(nodes, roots, saved)
+
     by_kind: dict[str, int] = {}
     for n in nodes.values():
         by_kind[n.kind] = by_kind.get(n.kind, 0) + 1
@@ -767,6 +877,8 @@ def main() -> int:
         "schema": 1,
         "country": json.loads((ROOT / "gazetteer" / "br.json").read_text(encoding="utf-8"))["country"],
         "levelNames": LEVEL_NAMES,
+        "world": {"w": WORLD_W, "h": WORLD_H},
+        "layout": layout,
         "roots": sorted(n.id for n in nodes.values() if n.parentId is None),
         "nodes": {nid: asdict(n) for nid, n in sorted(nodes.items())},
         "archetypes": archetypes,
@@ -795,7 +907,8 @@ def main() -> int:
     (out / "world.data.js").write_text(data_js, encoding="utf-8")
 
     # páginas self-contained: um arquivo só, abre com duplo clique
-    for src, dst in (("viewer", "viewer.html"), ("prototype", "prototype.html")):
+    for src, dst in (("viewer", "viewer.html"), ("prototype", "prototype.html"),
+                     ("mapper", "mapper.html")):
         tpl = ROOT / "tools" / src / "index.html"
         if tpl.exists():
             html = tpl.read_text(encoding="utf-8").replace(
@@ -807,6 +920,7 @@ def main() -> int:
     print(f"✓ build/world.json      {len(nodes)} nós ({stats['slots de asset']} slots)")
     print(f"✓ build/world.data.js   bundle p/ tools/viewer/index.html")
     print(f"✓ build/viewer.html     visualizador self-contained (abra com duplo clique)")
+    print(f"✓ build/mapper.html     mapa espacial editável ({len(layout)} zonas)")
     print(f"✓ build/report.md       {len(rep.errors)} erro(s), {len(rep.warnings)} aviso(s)")
     return 1 if rep.errors else 0
 

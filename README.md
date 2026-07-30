@@ -16,7 +16,10 @@ docs/saturation-log.md       cost tracking per pass (the reuse curve)
 docs/lista-de-assets.md      Etapa 1 asset spec (pt-BR): resolutions, formats, sizes, slot schema
 docs/arquitetura-mapa.md     how the containment tree drives loading + simulation (pt-BR)
 tools/worldbuild.py          exporter: all layers -> build/world.json + validation report
-tools/viewer/                interactive drill-down viewer (world -> city -> district -> venue)
+tools/mapper/                interactive spatial map: nested zones, continuous zoom, drag to redraw
+tools/viewer/                data inspector (same tree, list form)
+tools/prototype/             turn-based loop prototype for testing candidate verbs
+map/layout.<country>.json    optional: hand-placed zones; generated for whatever is absent
 archetypes/_template.md      blank kit for new archetypes
 dossiers/_template.md        blank structure for new hero dossiers
 ```
@@ -39,8 +42,14 @@ python3 tools/worldbuild.py --check  # validate only; exit 1 on error
 No dependencies (Python 3.11+ stdlib). The exporter merges the gazetteer tree with the
 districts and landmarks parsed out of the dossiers into one containment tree
 (region → state → sub-region → city → district → venue), resolves archetype inheritance,
-applies lens overlays separably, and emits the asset-slot manifest. Open `build/viewer.html`
-directly in a browser — no server needed. See `docs/arquitetura-mapa.md`.
+applies lens overlays separably, computes the spatial layout, and emits the asset-slot
+manifest. Open `build/mapper.html` directly in a browser — no server needed.
+
+**Core vs. lens.** The core is the place researcher: a tree of localities, classified by
+level, with their characteristics. That part is country- and project-agnostic. Interaction
+pins, clubs and match events are a *lens* — toggleable in the mapper and deletable from
+disk without breaking the core. A different project reuses the same tree with a different
+lens. See `docs/arquitetura-mapa.md`.
 
 ## How to add a new country
 
