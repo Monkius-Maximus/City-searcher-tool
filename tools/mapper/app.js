@@ -628,7 +628,8 @@ document.getElementById('edit').onclick = e => {
   editing = !editing; e.currentTarget.setAttribute('aria-pressed', String(editing));
   document.getElementById('map').classList.toggle('editing', editing); renderMap(); };
 
-document.getElementById('export').onclick = () => {
+const exportBtn = document.getElementById('export');
+exportBtn.onclick = async () => {
   const out = {
     note: 'Gerado pelo editor de mapa. Salve como map/edits.json — worldbuild.py mescla no próximo build.',
     world: W.world,
@@ -636,9 +637,38 @@ document.getElementById('export').onclick = () => {
     rects: Object.fromEntries(Object.entries(ed.rects).map(([k, r]) =>
       [k, {x: +r.x.toFixed(2), y: +r.y.toFixed(2), w: +r.w.toFixed(2), h: +r.h.toFixed(2), edited: true}]))
   };
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([JSON.stringify(out, null, 1)], {type: 'application/json'}));
-  a.download = 'edits.json'; a.click();
+  const blob = new Blob([JSON.stringify(out, null, 1)], {type: 'application/json'});
+
+  const original = exportBtn.textContent;
+  exportBtn.disabled = true; exportBtn.textContent = '⤓ Exportando…';
+  try {
+    // Dentro do Artifact publicado a página roda num iframe sem acesso direto
+    // ao sistema de arquivos — um <a download> ali não faz nada (o viewer
+    // nunca concede essa permissão). A capability `downloads` é o canal
+    // correto: pede confirmação ao viewer e entrega o arquivo por fora do
+    // sandbox. `window.claude` só existe dentro do viewer da claude.ai; ao
+    // abrir build/mapper.html direto no navegador (file://) ele nem existe,
+    // então o fallback abaixo cobre esse caso sem nenhuma mudança de uso.
+    const downloads = (window.claude && typeof window.claude.use === 'function')
+      ? await window.claude.use('downloads').catch(() => null)
+      : null;
+    if (downloads) {
+      try {
+        await downloads.save({filename: 'edits.json', data: blob});
+        return;
+      } catch (err) {
+        if (err && err.code === 'declined') return;   // o viewer recusou — não insiste
+        console.warn('downloads.save falhou, tentando o caminho local:', err);
+        // cai para o download clássico abaixo
+      }
+    }
+    const a = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    a.href = url; a.download = 'edits.json'; a.click();
+    URL.revokeObjectURL(url);
+  } finally {
+    exportBtn.disabled = false; exportBtn.textContent = original;
+  }
 };
 document.getElementById('import').onclick = () => document.getElementById('file').click();
 document.getElementById('file').onchange = e => {
